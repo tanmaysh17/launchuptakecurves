@@ -1,0 +1,304 @@
+import { useEffect, useMemo, useReducer } from "react";
+import { toBlob } from "html-to-image";
+import { ChartPanel } from "./components/chart/ChartPanel";
+import { CoreParameters } from "./components/controls/CoreParameters";
+import { ModelParameters } from "./components/controls/ModelParameters";
+import { ModelSelector } from "./components/controls/ModelSelector";
+import { ScenarioControls } from "./components/controls/ScenarioControls";
+import { FitPanel } from "./components/fit/FitPanel";
+import { MilestonesPanel } from "./components/MilestonesPanel";
+import { ModelAbout } from "./components/ModelAbout";
+import { TablePanel } from "./components/table/TablePanel";
+import { PillTabs } from "./components/ui/PillTabs";
+import { Toast } from "./components/ui/Toast";
+import { parseObservedCsv } from "./lib/csv";
+import { bestFitResult, fitComparableModels } from "./lib/fitting/fitModels";
+import { deriveMilestones } from "./lib/milestones";
+import { computeScenarioSeries, computeSeries, MODEL_LABELS } from "./lib/models";
+import { readShareStateFromUrl, toShareableState, writeShareStateToUrl } from "./lib/shareState";
+import { initialAppState, reducer } from "./state/reducer";
+import type { FitResult, LeftTab, ModelType, RightTab } from "./types";
+
+export default function App() {
+  const [state, dispatch] = useReducer(reducer, initialAppState);
+
+  const activeSeries = useMemo(
+    () =>
+      computeSeries({
+        model: state.activeModel,
+        core: {
+          ceilingPct: state.core.ceilingPct,
+          horizon: state.core.horizon,
+          launchLag: state.core.launchLag,
+          timeUnit: state.core.timeUnit,
+          tam: state.core.tam
+        },
+        params: state.params
+      }),
+    [state.activeModel, state.core.ceilingPct, state.core.horizon, state.core.launchLag, state.core.timeUnit, state.core.tam, state.params]
+  );
+
+  const milestones = useMemo(
+    () => deriveMilestones(activeSeries.cumulativePct, activeSeries.incrementalPct, state.core.ceilingPct),
+    [activeSeries.cumulativePct, activeSeries.incrementalPct, state.core.ceilingPct]
+  );
+
+  const scenarioSeries = useMemo(() => {
+    return computeScenarioSeries(
+      state.scenarios,
+      {
+        horizon: state.core.horizon,
+        timeUnit: state.core.timeUnit,
+        tam: state.core.tam
+      },
+      state.params
+    ).map(({ scenario, series }) => ({
+      id: scenario.id,
+      name: scenario.name,
+      color: scenario.color,
+      points: series.points
+    }));
+  }, [state.scenarios, state.core.horizon, state.core.timeUnit, state.core.tam, state.params]);
+
+  useEffect(() => {
+    const parsed = parseObservedCsv(state.fit.rawInput);
+    dispatch({ type: "setFitData", data: parsed.data, error: parsed.error });
+  }, [state.fit.rawInput]);
+
+  useEffect(() => {
+    if (!state.fit.data.length) {
+      dispatch({ type: "setFitResults", results: {} });
+      dispatch({ type: "setStagedFit", result: null });
+      return;
+    }
+    dispatch({ type: "setFitRunning", value: true });
+    const timer = window.setTimeout(() => {
+      const results = fitComparableModels(state, state.fit.data);
+      const map = Object.fromEntries(results.map((result) => [result.model, result])) as Partial<Record<ModelType, FitResult>>;
+      dispatch({ type: "setFitResults", results: map });
+      dispatch({ type: "setStagedFit", result: map[state.activeModel] ?? bestFitResult(results) ?? null });
+      dispatch({ type: "setFitRunning", value: false });
+    }, 10);
+    return () => window.clearTimeout(timer);
+  }, [state.fit.data]);
+
+  useEffect(() => {
+    if (!state.toast) {
+      return;
+    }
+    const timer = window.setTimeout(() => dispatch({ type: "setToast", value: null }), 2400);
+    return () => window.clearTimeout(timer);
+  }, [state.toast]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.has("state") && !readShareStateFromUrl()) {
+      dispatch({ type: "setToast", value: "Invalid shared URL state. Loaded defaults instead." });
+    }
+  }, []);
+
+  useEffect(() => {
+    if (window.innerWidth < 768) {
+      dispatch({ type: "setRightTab", tab: "table" });
+    }
+  }, []);
+
+  const handleAutoFit = () => {
+    if (!state.fit.data.length || state.activeModel === "linear") {
+      return;
+    }
+    dispatch({ type: "setFitRunning", value: true });
+
+    setTimeout(() => {
+      const results = fitComparableModels(state, state.fit.data);
+      const map = Object.fromEntries(results.map((result) => [result.model, result])) as Partial<Record<ModelType, FitResult>>;
+      dispatch({ type: "setFitResults", results: map });
+      const staged = map[state.activeModel] ?? bestFitResult(results) ?? null;
+      dispatch({ type: "setStagedFit", result: staged });
+      if (staged) {
+        dispatch({ type: "setActiveModel", model: staged.model });
+      }
+      dispatch({ type: "setFitRunning", value: false });
+      dispatch({
+        type: "setToast",
+        value: staged ? `Fit complete: ${MODEL_LABELS[staged.model]} staged.` : "Fit did not produce a valid result."
+      });
+    }, 10);
+  };
+
+  const handleApplyFit = () => {
+    dispatch({ type: "applyStagedFit" });
+    dispatch({ type: "setToast", value: "Fitted parameters applied." });
+  };
+
+  const copyChart = async () => {
+    const node = document.getElementById("chart-capture");
+    if (!node) {
+      return;
+    }
+    const blob = await toBlob(node, { cacheBust: true, pixelRatio: 2, backgroundColor: "#0d1117" });
+    if (!blob) {
+      dispatch({ type: "setToast", value: "Unable to create chart image." });
+      return;
+    }
+    try {
+      const clipboardItemCtor = (window as unknown as { ClipboardItem?: new (items: Record<string, Blob>) => unknown })
+        .ClipboardItem;
+      if (navigator.clipboard && clipboardItemCtor) {
+        // ClipboardItem support varies; fallback below handles unsupported contexts.
+        await (navigator.clipboard as unknown as { write: (items: unknown[]) => Promise<void> }).write([
+          new clipboardItemCtor({ "image/png": blob })
+        ]);
+        dispatch({ type: "setToast", value: "Chart copied to clipboard." });
+        return;
+      }
+    } catch {
+      // continue to fallback
+    }
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "launch-uptake-chart.png";
+    a.click();
+    URL.revokeObjectURL(url);
+    dispatch({ type: "setToast", value: "Clipboard blocked. Chart downloaded instead." });
+  };
+
+  const shareState = async () => {
+    const url = writeShareStateToUrl(toShareableState(state));
+    try {
+      await navigator.clipboard.writeText(url);
+      dispatch({ type: "setToast", value: "Share URL copied to clipboard." });
+    } catch {
+      dispatch({ type: "setToast", value: "Share URL written to address bar." });
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-app-bg text-app-text">
+      <div className="mx-auto max-w-[1600px] p-4 md:p-5">
+        <div className="mb-4 flex items-end justify-between gap-3">
+          <div>
+            <h1 className="text-xl font-semibold">Launch Uptake Modeler</h1>
+            <p className="text-sm text-app-muted">Interactive adoption forecasting with curve fitting, scenarios, and export-ready outputs.</p>
+          </div>
+          <div className="font-chrome text-[11px] uppercase tracking-[0.1em] text-app-muted">Premium Launch Analytics</div>
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-[minmax(320px,30%)_minmax(0,70%)]">
+          <aside className="rounded-panel border border-app-border bg-app-elevated p-3 md:p-4 animate-fadeUp">
+            <ScenarioControls
+              scenarios={state.scenarios}
+              onAdd={() => dispatch({ type: "addScenario" })}
+              onClear={() => dispatch({ type: "clearScenarios" })}
+              onRename={(id, name) => dispatch({ type: "renameScenario", id, name })}
+            />
+            <div className="mt-4">
+              <PillTabs<LeftTab>
+                value={state.leftTab}
+                onChange={(tab) => dispatch({ type: "setLeftTab", tab })}
+                options={[
+                  { key: "parameters", label: "Parameters" },
+                  { key: "fit", label: "Fit To Data" }
+                ]}
+              />
+            </div>
+            <div className="mt-4 space-y-4">
+              {state.leftTab === "parameters" ? (
+                <>
+                  <ModelSelector activeModel={state.activeModel} onSelect={(model) => dispatch({ type: "setActiveModel", model })} />
+                  <CoreParameters
+                    core={state.core}
+                    onSetCore={(key, value) => dispatch({ type: "setCoreParam", key, value })}
+                  />
+                  <ModelParameters
+                    model={state.activeModel}
+                    params={state.params}
+                    horizon={state.core.horizon}
+                    onSetModelParam={(model, key, value) => dispatch({ type: "setModelParam", model, key, value })}
+                  />
+                </>
+              ) : (
+                <FitPanel
+                  fit={state.fit}
+                  activeModel={state.activeModel}
+                  onRawInputChange={(value) => dispatch({ type: "setFitRawInput", value })}
+                  onLoadFileText={(text) => dispatch({ type: "setFitRawInput", value: text })}
+                  onAutoFit={handleAutoFit}
+                  onApplyFit={handleApplyFit}
+                  onStageFit={(result) => {
+                    dispatch({ type: "setStagedFit", result });
+                    dispatch({ type: "setActiveModel", model: result.model });
+                  }}
+                />
+              )}
+            </div>
+          </aside>
+
+          <section className="animate-fadeUp">
+            <div className="mb-3 flex items-center justify-between">
+              <PillTabs<RightTab>
+                value={state.rightTab}
+                onChange={(tab) => dispatch({ type: "setRightTab", tab })}
+                options={[
+                  { key: "chart", label: "Chart" },
+                  { key: "table", label: "Table" }
+                ]}
+              />
+              <div className="rounded border border-app-border px-2 py-1 font-chrome text-[10px] uppercase tracking-[0.08em] text-app-muted">
+                Active: {MODEL_LABELS[state.activeModel]}
+              </div>
+            </div>
+
+            {state.rightTab === "chart" ? (
+              <ChartPanel
+                model={state.activeModel}
+                points={activeSeries.points}
+                scenarios={scenarioSeries}
+                milestones={milestones}
+                chartMode={state.chartMode}
+                bassView={state.bassView}
+                outputUnit={state.core.outputUnit}
+                tam={state.core.tam}
+                timeUnit={state.core.timeUnit}
+                richardsNu={state.params.richards.nu}
+                observed={state.fit.data}
+                onSetChartMode={(mode) => dispatch({ type: "setChartMode", mode })}
+                onSetBassView={(view) => dispatch({ type: "setBassView", view })}
+                onCopyChart={() => {
+                  void copyChart();
+                }}
+                onShare={() => {
+                  void shareState();
+                }}
+              />
+            ) : (
+              <TablePanel
+                model={state.activeModel}
+                points={activeSeries.points}
+                scenarios={scenarioSeries}
+                milestones={milestones}
+                tam={state.core.tam}
+                timeUnit={state.core.timeUnit}
+                sort={state.tableSort}
+                onSort={(sort) => dispatch({ type: "setTableSort", sort })}
+                onCopyChart={() => {
+                  void copyChart();
+                }}
+              />
+            )}
+
+            <MilestonesPanel milestones={milestones} timeUnit={state.core.timeUnit} />
+            <ModelAbout
+              model={state.activeModel}
+              richardsNu={state.params.richards.nu}
+              collapsed={state.aboutCollapsed}
+              onToggle={() => dispatch({ type: "toggleAbout" })}
+            />
+          </section>
+        </div>
+      </div>
+      {state.toast && <Toast message={state.toast} />}
+    </div>
+  );
+}
