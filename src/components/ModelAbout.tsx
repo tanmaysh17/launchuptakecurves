@@ -31,20 +31,37 @@ export function ModelAbout({ model, richardsNu, collapsed, onToggle }: ModelAbou
       {!collapsed && (
         <div className="space-y-3 border-t border-app-border px-3 py-3 text-sm text-app-text">
           <div>
-            <div className="font-chrome text-[11px] uppercase tracking-[0.08em] text-app-muted">{MODEL_LABELS[model]}</div>
+            <div className="font-chrome text-[12px] uppercase tracking-[0.08em] text-app-muted">{MODEL_LABELS[model]}</div>
             <p className="mt-1">{about.oneLiner}</p>
+            <p className="mt-2 text-app-muted">{about.background}</p>
           </div>
           <div>
-            <div className="font-chrome text-[11px] uppercase tracking-[0.08em] text-app-muted">Inflection</div>
+            <div className="font-chrome text-[12px] uppercase tracking-[0.08em] text-app-muted">Inflection</div>
             <p className="mt-1">{about.inflection}</p>
             {model === "richards" && <p className="mt-1 text-app-purple">{richardsInflectionLabel(richardsNu)}</p>}
           </div>
           <div>
-            <div className="font-chrome text-[11px] uppercase tracking-[0.08em] text-app-muted">Use Cases</div>
+            <div className="font-chrome text-[12px] uppercase tracking-[0.08em] text-app-muted">Use Cases</div>
             <p className="mt-1">{about.useCases}</p>
           </div>
           <div>
-            <div className="font-chrome text-[11px] uppercase tracking-[0.08em] text-app-muted">Recommended Ranges</div>
+            <div className="font-chrome text-[12px] uppercase tracking-[0.08em] text-app-muted">Parameter Meaning</div>
+            <ul className="mt-1 space-y-1 text-app-muted">
+              {about.parameterGuide.map((row) => (
+                <li key={row}>{row}</li>
+              ))}
+            </ul>
+          </div>
+          <div>
+            <div className="font-chrome text-[12px] uppercase tracking-[0.08em] text-app-muted">Best Practices</div>
+            <ul className="mt-1 space-y-1 text-app-muted">
+              {about.bestPractices.map((row) => (
+                <li key={row}>{row}</li>
+              ))}
+            </ul>
+          </div>
+          <div>
+            <div className="font-chrome text-[12px] uppercase tracking-[0.08em] text-app-muted">Recommended Ranges</div>
             <p className="mt-1">{about.ranges}</p>
           </div>
           {about.notes && (

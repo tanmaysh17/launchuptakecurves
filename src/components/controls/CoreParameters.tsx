@@ -1,6 +1,7 @@
 import { ParameterSlider } from "../ui/ParameterSlider";
 import { PillTabs } from "../ui/PillTabs";
 import { SectionLabel } from "../ui/SectionLabel";
+import { InfoHint } from "../ui/InfoHint";
 import type { CoreParams, OutputUnit, TimeUnit } from "../../types";
 
 interface CoreParametersProps {
@@ -46,7 +47,10 @@ export function CoreParameters({ core, onSetCore }: CoreParametersProps) {
         hint="Periods of near-zero uptake before launch momentum begins."
       />
       <div className="rounded-panel border border-app-border bg-app-surface/60 px-3 py-3">
-        <div className="mb-2 font-chrome text-[11px] uppercase tracking-[0.08em] text-app-muted">Time Unit</div>
+        <div className="mb-2 flex items-center text-[13px] font-medium tracking-[0.01em] text-app-text/90">
+          Time Unit
+          <InfoHint text="Controls only labels and reporting language (Month/Week). It does not rescale the curve math." />
+        </div>
         <PillTabs<TimeUnit>
           value={core.timeUnit}
           onChange={(value) => onSetCore("timeUnit", value)}
@@ -57,7 +61,10 @@ export function CoreParameters({ core, onSetCore }: CoreParametersProps) {
         />
       </div>
       <div className="rounded-panel border border-app-border bg-app-surface/60 px-3 py-3">
-        <div className="mb-2 font-chrome text-[11px] uppercase tracking-[0.08em] text-app-muted">Output Units</div>
+        <div className="mb-2 flex items-center text-[13px] font-medium tracking-[0.01em] text-app-text/90">
+          Output Units
+          <InfoHint text="Percent shows penetration. Volume multiplies penetration by TAM to show absolute counts." />
+        </div>
         <PillTabs<OutputUnit>
           value={core.outputUnit}
           onChange={(value) => onSetCore("outputUnit", value)}
@@ -68,8 +75,9 @@ export function CoreParameters({ core, onSetCore }: CoreParametersProps) {
         />
         {core.outputUnit === "volume" && (
           <label className="mt-3 block">
-            <span className="mb-1 block font-chrome text-[11px] uppercase tracking-[0.08em] text-app-muted">
+            <span className="mb-1 flex items-center text-[13px] font-medium tracking-[0.01em] text-app-text/90">
               Total Addressable Market
+              <InfoHint text="Estimated total eligible users/accounts/units. Volume outputs are computed as penetration% × TAM." />
             </span>
             <input
               type="number"

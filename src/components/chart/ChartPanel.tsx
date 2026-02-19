@@ -58,10 +58,10 @@ function extractValue(point: CurvePoint, mode: ChartMode, outputUnit: OutputUnit
 
 function yDomain(points: CurvePoint[], scenarios: ScenarioSeries[], mode: ChartMode, outputUnit: OutputUnit, tam: number | null): [number, number] {
   if (mode === "cumulative" && outputUnit === "percent") {
-    return [0, 100];
+    return [0, 105];
   }
   if (mode === "cumulative" && outputUnit === "volume" && tam != null) {
-    return [0, tam];
+    return [0, tam * 1.05];
   }
   let max = 0;
   for (const p of points) {
@@ -194,9 +194,9 @@ export function ChartPanel({
           </button>
         </div>
       </div>
-      <div id="chart-capture" className="h-[340px] w-full rounded-panel bg-app-bg/60 p-2">
+      <div id="chart-capture" className="h-[360px] w-full rounded-panel bg-app-bg/60 p-2">
         <ResponsiveContainer width="100%" height="100%">
-          <ComposedChart data={rows} margin={{ top: 8, right: 12, left: 6, bottom: 8 }}>
+          <ComposedChart data={rows} margin={{ top: 24, right: 16, left: 8, bottom: 8 }}>
             <defs>
               <linearGradient id="lineFill" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="5%" stopColor="#00d4b4" stopOpacity={0.26} />
@@ -245,7 +245,7 @@ export function ChartPanel({
                   strokeDasharray="5 5"
                   label={{
                     value: line.label,
-                    position: "top",
+                    position: "insideTop",
                     fill: line.color,
                     fontSize: 10
                   }}
