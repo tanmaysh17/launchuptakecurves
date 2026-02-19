@@ -49,6 +49,14 @@ interface ChartRow {
   [key: string]: string | number;
 }
 
+const CHART_COLORS = {
+  accent: "rgb(var(--app-accent))",
+  amber: "rgb(var(--app-amber))",
+  muted: "rgb(var(--app-muted))",
+  border: "rgb(var(--app-border))",
+  text: "rgb(var(--app-text))"
+};
+
 function extractValue(point: CurvePoint, mode: ChartMode, outputUnit: OutputUnit): number {
   if (outputUnit === "percent") {
     return mode === "cumulative" ? point.cumulativePct : point.incrementalPct;
@@ -144,9 +152,9 @@ export function ChartPanel({
   const ticks = makeTicks(points.length);
 
   const milestoneLines = [
-    { period: milestones.reach10, label: "10%", color: "#00d4b4" },
-    { period: milestones.reach50, label: "50%", color: "#f0a500" },
-    { period: milestones.reach90, label: "90%", color: "#8b949e" }
+    { period: milestones.reach10, label: "10%", color: CHART_COLORS.accent },
+    { period: milestones.reach50, label: "50%", color: CHART_COLORS.amber },
+    { period: milestones.reach90, label: "90%", color: CHART_COLORS.muted }
   ];
 
   return (
@@ -168,7 +176,7 @@ export function ChartPanel({
               { key: "growth", label: "Growth Rate" }
             ]}
           />
-          {model === "bass" && chartMode === "cumulative" && (
+          {model === "bass" && (
             <PillTabs<BassView>
               value={bassView}
               onChange={onSetBassView}
@@ -199,23 +207,23 @@ export function ChartPanel({
           <ComposedChart data={rows} margin={{ top: 24, right: 16, left: 8, bottom: 8 }}>
             <defs>
               <linearGradient id="lineFill" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#00d4b4" stopOpacity={0.26} />
-                <stop offset="95%" stopColor="#00d4b4" stopOpacity={0.02} />
+                <stop offset="5%" stopColor={CHART_COLORS.accent} stopOpacity={0.26} />
+                <stop offset="95%" stopColor={CHART_COLORS.accent} stopOpacity={0.02} />
               </linearGradient>
             </defs>
-            <CartesianGrid stroke="#30363d" strokeDasharray="3 3" vertical={false} />
+            <CartesianGrid stroke={CHART_COLORS.border} strokeDasharray="3 3" vertical={false} />
             <XAxis
               dataKey="period"
               ticks={ticks}
               tickFormatter={(v) => tickFormatterX(v, timeUnit)}
-              tick={{ fill: "#8b949e", fontSize: 11 }}
-              stroke="#30363d"
+              tick={{ fill: CHART_COLORS.muted, fontSize: 11 }}
+              stroke={CHART_COLORS.border}
             />
             <YAxis
               domain={domain}
               tickFormatter={(v) => tickFormatterY(v, outputUnit)}
-              tick={{ fill: "#8b949e", fontSize: 11 }}
-              stroke="#30363d"
+              tick={{ fill: CHART_COLORS.muted, fontSize: 11 }}
+              stroke={CHART_COLORS.border}
               width={70}
             />
             <Tooltip
@@ -252,6 +260,9 @@ export function ChartPanel({
                 />
               ) : null
             )}
+            {chartMode === "cumulative" && outputUnit === "percent" && (
+              <ReferenceLine y={100} stroke={CHART_COLORS.muted} strokeDasharray="4 4" />
+            )}
 
             {chartMode === "cumulative" && (
               <Area
@@ -268,7 +279,7 @@ export function ChartPanel({
               type="monotone"
               dataKey="active"
               name={chartMode === "cumulative" ? "Cumulative" : "Growth"}
-              stroke="#00d4b4"
+              stroke={CHART_COLORS.accent}
               strokeWidth={2.5}
               dot={false}
               fill="url(#lineFill)"
@@ -295,7 +306,7 @@ export function ChartPanel({
                 type="monotone"
                 dataKey="activeGrowth"
                 name="Bass Periodic Rate"
-                stroke="#f0a500"
+                stroke={CHART_COLORS.amber}
                 strokeWidth={2}
                 dot={false}
                 isAnimationActive
@@ -309,7 +320,7 @@ export function ChartPanel({
                 dataKey="value"
                 xAxisId={0}
                 yAxisId={0}
-                fill="#e6edf3"
+                fill={CHART_COLORS.text}
                 name="Observed Data"
               />
             )}
@@ -317,7 +328,7 @@ export function ChartPanel({
         </ResponsiveContainer>
       </div>
       {model === "richards" && (
-        <div className="mt-2 inline-flex rounded border border-app-purple/60 bg-[rgba(167,139,250,0.1)] px-2 py-1 text-xs text-app-purple">
+        <div className="mt-2 inline-flex rounded border border-app-purple/60 bg-[rgb(var(--app-purple)/0.1)] px-2 py-1 text-xs text-app-purple">
           {inflectionTextForRichards(richardsNu)}
         </div>
       )}

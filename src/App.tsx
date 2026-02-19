@@ -2,6 +2,7 @@ import { useEffect, useMemo, useReducer } from "react";
 import { toBlob } from "html-to-image";
 import { ChartPanel } from "./components/chart/ChartPanel";
 import { CoreParameters } from "./components/controls/CoreParameters";
+import { DisplayControls } from "./components/controls/DisplayControls";
 import { ModelParameters } from "./components/controls/ModelParameters";
 import { ModelSelector } from "./components/controls/ModelSelector";
 import { ScenarioControls } from "./components/controls/ScenarioControls";
@@ -10,37 +11,69 @@ import { MilestonesPanel } from "./components/MilestonesPanel";
 import { ModelAbout } from "./components/ModelAbout";
 import { TablePanel } from "./components/table/TablePanel";
 import { PillTabs } from "./components/ui/PillTabs";
+import { BrandLogo } from "./components/ui/BrandLogo";
 import { Toast } from "./components/ui/Toast";
 import { parseObservedCsv } from "./lib/csv";
 import { bestFitResult, fitComparableModels } from "./lib/fitting/fitModels";
 import { deriveMilestones } from "./lib/milestones";
 import { computeScenarioSeries, computeSeries, MODEL_LABELS } from "./lib/models";
 import { readShareStateFromUrl, toShareableState, writeShareStateToUrl } from "./lib/shareState";
+import { applyTheme, persistTheme } from "./lib/theme";
 import { initialAppState, reducer } from "./state/reducer";
 import type { FitResult, LeftTab, ModelType, RightTab } from "./types";
 
 export default function App() {
   const [state, dispatch] = useReducer(reducer, initialAppState);
-
+  const editingScenario = useMemo(
+    () => state.scenarios.find((scenario) => scenario.id === state.editingScenarioId) ?? null,
+    [state.scenarios, state.editingScenarioId]
+  );
+  const effectiveModel = editingScenario?.model ?? state.activeModel;
+  const effectiveCore = useMemo(
+    () => ({
+      ...state.core,
+      ceilingPct: editingScenario?.coreSnapshot.ceilingPct ?? state.core.ceilingPct,
+      launchLag: editingScenario?.coreSnapshot.launchLag ?? state.core.launchLag
+    }),
+    [state.core, editingScenario]
+  );
+  const effectiveParams = useMemo(() => {
+    if (!editingScenario) {
+      return state.params;
+    }
+    const next = { ...state.params };
+    if (editingScenario.model === "logistic") {
+      next.logistic = editingScenario.paramsSnapshot as typeof next.logistic;
+    } else if (editingScenario.model === "gompertz") {
+      next.gompertz = editingScenario.paramsSnapshot as typeof next.gompertz;
+    } else if (editingScenario.model === "richards") {
+      next.richards = editingScenario.paramsSnapshot as typeof next.richards;
+    } else if (editingScenario.model === "bass") {
+      next.bass = editingScenario.paramsSnapshot as typeof next.bass;
+    } else {
+      next.linear = editingScenario.paramsSnapshot as typeof next.linear;
+    }
+    return next;
+  }, [state.params, editingScenario]);
   const activeSeries = useMemo(
     () =>
       computeSeries({
-        model: state.activeModel,
+        model: effectiveModel,
         core: {
-          ceilingPct: state.core.ceilingPct,
-          horizon: state.core.horizon,
-          launchLag: state.core.launchLag,
-          timeUnit: state.core.timeUnit,
-          tam: state.core.tam
+          ceilingPct: effectiveCore.ceilingPct,
+          horizon: effectiveCore.horizon,
+          launchLag: effectiveCore.launchLag,
+          timeUnit: effectiveCore.timeUnit,
+          tam: effectiveCore.tam
         },
-        params: state.params
+        params: effectiveParams
       }),
-    [state.activeModel, state.core.ceilingPct, state.core.horizon, state.core.launchLag, state.core.timeUnit, state.core.tam, state.params]
+    [effectiveModel, effectiveCore, effectiveParams]
   );
 
   const milestones = useMemo(
-    () => deriveMilestones(activeSeries.cumulativePct, activeSeries.incrementalPct, state.core.ceilingPct),
-    [activeSeries.cumulativePct, activeSeries.incrementalPct, state.core.ceilingPct]
+    () => deriveMilestones(activeSeries.cumulativePct, activeSeries.incrementalPct, effectiveCore.ceilingPct),
+    [activeSeries.cumulativePct, activeSeries.incrementalPct, effectiveCore.ceilingPct]
   );
 
   const scenarioSeries = useMemo(() => {
@@ -56,9 +89,25 @@ export default function App() {
       id: scenario.id,
       name: scenario.name,
       color: scenario.color,
+      ceilingPct: scenario.coreSnapshot.ceilingPct,
       points: series.points
     }));
   }, [state.scenarios, state.core.horizon, state.core.timeUnit, state.core.tam, state.params]);
+
+  const scenarioMilestones = useMemo(
+    () =>
+      scenarioSeries.map((scenario) => ({
+        id: scenario.id,
+        name: scenario.name,
+        color: scenario.color,
+        milestones: deriveMilestones(
+          scenario.points.map((p) => p.cumulativePct),
+          scenario.points.map((p) => p.incrementalPct),
+          scenario.ceilingPct
+        )
+      })),
+    [scenarioSeries]
+  );
 
   useEffect(() => {
     const parsed = parseObservedCsv(state.fit.rawInput);
@@ -103,6 +152,11 @@ export default function App() {
     }
   }, []);
 
+  useEffect(() => {
+    applyTheme("dark");
+    persistTheme("dark");
+  }, []);
+
   const handleAutoFit = () => {
     if (!state.fit.data.length || state.activeModel === "linear") {
       return;
@@ -136,7 +190,12 @@ export default function App() {
     if (!node) {
       return;
     }
-    const blob = await toBlob(node, { cacheBust: true, pixelRatio: 2, backgroundColor: "#0d1117" });
+    const bgColor = getComputedStyle(document.documentElement).getPropertyValue("--app-bg").trim();
+    const blob = await toBlob(node, {
+      cacheBust: true,
+      pixelRatio: 2,
+      backgroundColor: bgColor ? `rgb(${bgColor})` : "rgb(13,17,23)"
+    });
     if (!blob) {
       dispatch({ type: "setToast", value: "Unable to create chart image." });
       return;
@@ -175,23 +234,34 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-app-bg text-app-text">
+    <div className="app-shell min-h-screen bg-app-bg text-app-text" data-theme="dark">
       <div className="mx-auto max-w-[1600px] p-4 md:p-5">
         <div className="mb-4 flex items-end justify-between gap-3">
           <div>
-            <h1 className="text-xl font-semibold">Launch Uptake Modeler</h1>
+            <BrandLogo />
             <p className="text-sm text-app-muted">Interactive adoption forecasting with curve fitting, scenarios, and export-ready outputs.</p>
           </div>
-          <div className="font-chrome text-[11px] uppercase tracking-[0.1em] text-app-muted">Premium Launch Analytics</div>
+          <div className="flex items-center gap-2">
+            <a
+              href="./readme.html"
+              target="_blank"
+              rel="noreferrer"
+              className="rounded border border-app-border px-3 py-1.5 font-chrome text-[11px] uppercase tracking-[0.08em] text-app-text hover:border-app-accent hover:text-app-accent"
+            >
+              Readme
+            </a>
+          </div>
         </div>
 
         <div className="grid gap-4 md:grid-cols-[minmax(320px,30%)_minmax(0,70%)]">
           <aside className="rounded-panel border border-app-border bg-app-elevated p-3 md:p-4 animate-fadeUp">
             <ScenarioControls
               scenarios={state.scenarios}
+              selectedScenarioId={state.editingScenarioId}
               onAdd={() => dispatch({ type: "addScenario" })}
               onClear={() => dispatch({ type: "clearScenarios" })}
               onRename={(id, name) => dispatch({ type: "renameScenario", id, name })}
+              onSelectScenario={(id) => dispatch({ type: "selectScenario", id })}
             />
             <div className="mt-4">
               <PillTabs<LeftTab>
@@ -206,16 +276,23 @@ export default function App() {
             <div className="mt-4 space-y-4">
               {state.leftTab === "parameters" ? (
                 <>
-                  <ModelSelector activeModel={state.activeModel} onSelect={(model) => dispatch({ type: "setActiveModel", model })} />
-                  <CoreParameters
-                    core={state.core}
-                    onSetCore={(key, value) => dispatch({ type: "setCoreParam", key, value })}
+                  <ModelSelector
+                    activeModel={effectiveModel}
+                    onSelect={(model) =>
+                      editingScenario
+                        ? dispatch({ type: "setScenarioModel", id: editingScenario.id, model })
+                        : dispatch({ type: "setActiveModel", model })
+                    }
                   />
-                  <ModelParameters
-                    model={state.activeModel}
-                    params={state.params}
-                    horizon={state.core.horizon}
-                    onSetModelParam={(model, key, value) => dispatch({ type: "setModelParam", model, key, value })}
+                  <CoreParameters
+                    core={effectiveCore}
+                    onSetCore={(key, value) => {
+                      if (editingScenario && (key === "ceilingPct" || key === "launchLag")) {
+                        dispatch({ type: "setScenarioCoreParam", id: editingScenario.id, key, value: Number(value) });
+                        return;
+                      }
+                      dispatch({ type: "setCoreParam", key, value });
+                    }}
                   />
                 </>
               ) : (
@@ -236,65 +313,95 @@ export default function App() {
           </aside>
 
           <section className="animate-fadeUp">
-            <div className="mb-3 flex items-center justify-between">
-              <PillTabs<RightTab>
-                value={state.rightTab}
-                onChange={(tab) => dispatch({ type: "setRightTab", tab })}
-                options={[
-                  { key: "chart", label: "Chart" },
-                  { key: "table", label: "Table" }
-                ]}
-              />
-              <div className="rounded border border-app-border px-2 py-1 font-chrome text-[10px] uppercase tracking-[0.08em] text-app-muted">
-                Active: {MODEL_LABELS[state.activeModel]}
+            <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_320px]">
+              <div>
+                <div className="mb-3 flex items-center justify-between gap-3">
+                  <div className="min-w-[240px]">
+                    <PillTabs<RightTab>
+                      value={state.rightTab}
+                      onChange={(tab) => dispatch({ type: "setRightTab", tab })}
+                      options={[
+                        { key: "chart", label: "Chart" },
+                        { key: "table", label: "Table" }
+                      ]}
+                      large
+                    />
+                  </div>
+                  <div className="rounded border border-app-border px-2 py-1 font-chrome text-[10px] uppercase tracking-[0.08em] text-app-muted">
+                    {editingScenario
+                      ? `Editing: ${editingScenario.name} (${MODEL_LABELS[effectiveModel]})`
+                      : `Active: ${MODEL_LABELS[effectiveModel]}`}
+                  </div>
+                </div>
+
+                {state.rightTab === "chart" ? (
+                  <ChartPanel
+                    model={effectiveModel}
+                    points={activeSeries.points}
+                    scenarios={scenarioSeries}
+                    milestones={milestones}
+                    chartMode={state.chartMode}
+                    bassView={state.bassView}
+                    outputUnit={effectiveCore.outputUnit}
+                    tam={effectiveCore.tam}
+                    timeUnit={effectiveCore.timeUnit}
+                    richardsNu={effectiveParams.richards.nu}
+                    observed={state.fit.data}
+                    onSetChartMode={(mode) => dispatch({ type: "setChartMode", mode })}
+                    onSetBassView={(view) => dispatch({ type: "setBassView", view })}
+                    onCopyChart={() => {
+                      void copyChart();
+                    }}
+                    onShare={() => {
+                      void shareState();
+                    }}
+                  />
+                ) : (
+                  <TablePanel
+                    model={effectiveModel}
+                    points={activeSeries.points}
+                    scenarios={scenarioSeries}
+                    milestones={milestones}
+                    tam={effectiveCore.tam}
+                    timeUnit={effectiveCore.timeUnit}
+                    sort={state.tableSort}
+                    onSort={(sort) => dispatch({ type: "setTableSort", sort })}
+                    onCopyChart={() => {
+                      void copyChart();
+                    }}
+                  />
+                )}
+
+                <MilestonesPanel milestones={milestones} timeUnit={effectiveCore.timeUnit} scenarioMilestones={scenarioMilestones} />
+                <ModelAbout
+                  model={effectiveModel}
+                  richardsNu={effectiveParams.richards.nu}
+                  collapsed={state.aboutCollapsed}
+                  onToggle={() => dispatch({ type: "toggleAbout" })}
+                />
               </div>
+              <aside className="space-y-3">
+                <div className="rounded-panel border border-app-border bg-app-surface p-3">
+                  <DisplayControls
+                    core={state.core}
+                    onSetCore={(key, value) => dispatch({ type: "setCoreParam", key, value })}
+                  />
+                </div>
+                <div className="rounded-panel border border-app-border bg-app-surface p-3">
+                  <ModelParameters
+                    model={effectiveModel}
+                    params={effectiveParams}
+                    horizon={effectiveCore.horizon}
+                    onSetModelParam={(model, key, value) =>
+                      editingScenario
+                        ? dispatch({ type: "setScenarioModelParam", id: editingScenario.id, key, value })
+                        : dispatch({ type: "setModelParam", model, key, value })
+                    }
+                    compact
+                  />
+                </div>
+              </aside>
             </div>
-
-            {state.rightTab === "chart" ? (
-              <ChartPanel
-                model={state.activeModel}
-                points={activeSeries.points}
-                scenarios={scenarioSeries}
-                milestones={milestones}
-                chartMode={state.chartMode}
-                bassView={state.bassView}
-                outputUnit={state.core.outputUnit}
-                tam={state.core.tam}
-                timeUnit={state.core.timeUnit}
-                richardsNu={state.params.richards.nu}
-                observed={state.fit.data}
-                onSetChartMode={(mode) => dispatch({ type: "setChartMode", mode })}
-                onSetBassView={(view) => dispatch({ type: "setBassView", view })}
-                onCopyChart={() => {
-                  void copyChart();
-                }}
-                onShare={() => {
-                  void shareState();
-                }}
-              />
-            ) : (
-              <TablePanel
-                model={state.activeModel}
-                points={activeSeries.points}
-                scenarios={scenarioSeries}
-                milestones={milestones}
-                tam={state.core.tam}
-                timeUnit={state.core.timeUnit}
-                sort={state.tableSort}
-                onSort={(sort) => dispatch({ type: "setTableSort", sort })}
-                onCopyChart={() => {
-                  void copyChart();
-                }}
-              />
-            )}
-
-            <MilestonesPanel milestones={milestones} timeUnit={state.core.timeUnit} />
-            <ModelAbout
-              model={state.activeModel}
-              richardsNu={state.params.richards.nu}
-              collapsed={state.aboutCollapsed}
-              onToggle={() => dispatch({ type: "toggleAbout" })}
-            />
           </section>
         </div>
       </div>

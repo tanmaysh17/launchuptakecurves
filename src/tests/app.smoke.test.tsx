@@ -6,7 +6,8 @@ import App from "../App";
 describe("app smoke", () => {
   it("renders default richards state", () => {
     render(<App />);
-    expect(screen.getByText("Launch Uptake Modeler")).toBeInTheDocument();
+    expect(screen.getByText("Launch Uptake")).toBeInTheDocument();
+    expect(screen.getByText("Modeler")).toBeInTheDocument();
     expect(screen.getByText(/Active: Richards/i)).toBeInTheDocument();
   });
 

@@ -6,16 +6,16 @@ export default {
     extend: {
       colors: {
         app: {
-          bg: "#0d1117",
-          surface: "#161b22",
-          elevated: "#1a2332",
-          accent: "#00d4b4",
-          amber: "#f0a500",
-          purple: "#a78bfa",
-          text: "#e6edf3",
-          muted: "#8b949e",
-          border: "#30363d",
-          success: "#3fb950"
+          bg: "rgb(var(--app-bg) / <alpha-value>)",
+          surface: "rgb(var(--app-surface) / <alpha-value>)",
+          elevated: "rgb(var(--app-elevated) / <alpha-value>)",
+          accent: "rgb(var(--app-accent) / <alpha-value>)",
+          amber: "rgb(var(--app-amber) / <alpha-value>)",
+          purple: "rgb(var(--app-purple) / <alpha-value>)",
+          text: "rgb(var(--app-text) / <alpha-value>)",
+          muted: "rgb(var(--app-muted) / <alpha-value>)",
+          border: "rgb(var(--app-border) / <alpha-value>)",
+          success: "rgb(var(--app-success) / <alpha-value>)"
         }
       },
       borderRadius: {

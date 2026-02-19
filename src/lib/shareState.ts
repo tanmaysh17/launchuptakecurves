@@ -19,11 +19,13 @@ export function toShareableState(state: AppState): ShareableState {
     activeModel: state.activeModel,
     core: state.core,
     params: state.params,
+    editingScenarioId: state.editingScenarioId,
     rightTab: state.rightTab,
     leftTab: state.leftTab,
     chartMode: state.chartMode,
     bassView: state.bassView,
-    scenarios: state.scenarios
+    scenarios: state.scenarios,
+    theme: state.theme
   };
 }
 
@@ -34,11 +36,15 @@ export function encodeShareState(state: ShareableState): string {
 export function decodeShareState(encoded: string): ShareableState | null {
   try {
     const json = fromBase64Utf8(encoded);
-    const parsed = JSON.parse(json) as ShareableState;
-    if (!parsed || typeof parsed !== "object") {
+    const parsed = JSON.parse(json) as unknown;
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
       return null;
     }
-    return parsed;
+    const candidate = parsed as Partial<ShareableState>;
+    return {
+      ...candidate,
+      editingScenarioId: candidate.editingScenarioId ?? null
+    } as ShareableState;
   } catch {
     return null;
   }

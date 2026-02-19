@@ -34,6 +34,29 @@ export function FitPanel({
   return (
     <div className="space-y-3">
       <SectionLabel>Fit To Data</SectionLabel>
+      <div className="rounded-panel border border-app-border bg-app-surface/70 p-3 text-sm text-app-text">
+        <p className="text-app-muted">
+          Fit to Data estimates model parameters from observed adoption points so your forecast shape reflects real launch evidence.
+        </p>
+        <div className="mt-2 grid gap-2 md:grid-cols-2">
+          <div>
+            <div className="font-chrome text-[11px] uppercase tracking-[0.08em] text-app-muted">How To Use</div>
+            <ul className="mt-1 space-y-1 text-xs text-app-muted">
+              <li>Paste or upload two columns: period, adoption%.</li>
+              <li>Click Auto-Fit to optimize parameters for each model.</li>
+              <li>Review R2, RMSE, and MAPE before applying.</li>
+            </ul>
+          </div>
+          <div>
+            <div className="font-chrome text-[11px] uppercase tracking-[0.08em] text-app-muted">Best Practices</div>
+            <ul className="mt-1 space-y-1 text-xs text-app-muted">
+              <li>Use cumulative adoption data, not period-only sales.</li>
+              <li>Include enough early and mid-stage points to identify shape.</li>
+              <li>Treat very high R2 with caution when sample size is small.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
       <div className="rounded-panel border border-app-border bg-app-surface p-3">
         <label className="mb-2 block font-chrome text-[11px] uppercase tracking-[0.08em] text-app-muted">
           Paste CSV (period, adoption%)
@@ -55,7 +78,7 @@ export function FitPanel({
               "rounded-panel border px-3 py-1.5 font-chrome text-[11px] uppercase tracking-[0.08em]",
               !fit.data.length || activeModel === "linear" || fit.isFitting
                 ? "cursor-not-allowed border-app-border text-app-muted"
-                : "border-app-accent bg-[rgba(0,212,180,0.12)] text-app-accent"
+                : "border-app-accent bg-[rgb(var(--app-accent)/0.12)] text-app-accent"
             )}
           >
             {fit.isFitting ? "Fitting..." : "Auto-Fit"}
@@ -67,7 +90,7 @@ export function FitPanel({
             className={clsx(
               "rounded-panel border px-3 py-1.5 font-chrome text-[11px] uppercase tracking-[0.08em]",
               fit.stagedFit
-                ? "border-app-amber bg-[rgba(240,165,0,0.12)] text-app-amber"
+                ? "border-app-amber bg-[rgb(var(--app-amber)/0.12)] text-app-amber"
                 : "cursor-not-allowed border-app-border text-app-muted"
             )}
           >
@@ -81,7 +104,7 @@ export function FitPanel({
           <div className="mb-2 flex items-center justify-between">
             <h3 className="font-chrome text-[11px] uppercase tracking-[0.08em] text-app-muted">Model Comparison</h3>
             {best && (
-              <span className="rounded bg-[rgba(0,212,180,0.15)] px-2 py-1 text-[11px] text-app-accent">
+              <span className="rounded bg-[rgb(var(--app-accent)/0.15)] px-2 py-1 text-[11px] text-app-accent">
                 Best: {MODEL_LABELS[best.model]}
               </span>
             )}
@@ -106,7 +129,7 @@ export function FitPanel({
                       key={model}
                       className={clsx(
                         "border-b border-app-border/50",
-                        isBest && "bg-[rgba(0,212,180,0.08)]"
+                        isBest && "bg-[rgb(var(--app-accent)/0.08)]"
                       )}
                     >
                       <td className="px-2 py-2 text-app-text">{MODEL_LABELS[model]}</td>

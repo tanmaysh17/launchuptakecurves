@@ -15,5 +15,10 @@ class ResizeObserverMock {
 
 afterEach(() => {
   cleanup();
+  window.localStorage.clear();
+  document.documentElement.removeAttribute("data-theme");
+  document.documentElement.classList.remove("theme-light", "theme-dark");
+  document.body.removeAttribute("data-theme");
+  document.body.classList.remove("theme-light", "theme-dark");
   window.history.replaceState({}, "", "/");
 });

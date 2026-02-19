@@ -4,9 +4,11 @@ import { MODEL_LABELS } from "../../lib/models";
 
 interface ScenarioControlsProps {
   scenarios: Scenario[];
+  selectedScenarioId: string | null;
   onAdd: () => void;
   onClear: () => void;
   onRename: (id: string, name: string) => void;
+  onSelectScenario: (id: string | null) => void;
 }
 
 function summaryText(scenario: Scenario): string {
@@ -25,7 +27,14 @@ function summaryText(scenario: Scenario): string {
   return `${base} | ${params}`;
 }
 
-export function ScenarioControls({ scenarios, onAdd, onClear, onRename }: ScenarioControlsProps) {
+export function ScenarioControls({
+  scenarios,
+  selectedScenarioId,
+  onAdd,
+  onClear,
+  onRename,
+  onSelectScenario
+}: ScenarioControlsProps) {
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
@@ -34,7 +43,7 @@ export function ScenarioControls({ scenarios, onAdd, onClear, onRename }: Scenar
           <button
             type="button"
             onClick={onAdd}
-            className="rounded-panel border border-app-accent bg-[rgba(0,212,180,0.12)] px-2 py-1 font-chrome text-[11px] uppercase tracking-[0.08em] text-app-accent"
+            className="rounded-panel border border-app-accent bg-[rgb(var(--app-accent)/0.12)] px-2 py-1 font-chrome text-[11px] uppercase tracking-[0.08em] text-app-accent"
           >
             Add Scenario
           </button>
@@ -55,11 +64,23 @@ export function ScenarioControls({ scenarios, onAdd, onClear, onRename }: Scenar
               className="rounded-panel border border-app-border bg-app-surface p-2"
               style={{ borderLeft: `3px solid ${scenario.color}` }}
             >
-              <input
-                value={scenario.name}
-                onChange={(event) => onRename(scenario.id, event.target.value)}
-                className="w-full bg-transparent font-chrome text-xs uppercase tracking-[0.08em] text-app-text outline-none"
-              />
+              <div className="flex items-center gap-2">
+                <input
+                  value={scenario.name}
+                  onChange={(event) => onRename(scenario.id, event.target.value)}
+                  className="w-full bg-transparent font-chrome text-xs uppercase tracking-[0.08em] text-app-text outline-none"
+                />
+                <button
+                  type="button"
+                  onClick={() => onSelectScenario(selectedScenarioId === scenario.id ? null : scenario.id)}
+                  className="rounded border border-app-border px-2 py-0.5 font-chrome text-[10px] uppercase tracking-[0.08em] text-app-text hover:border-app-accent hover:text-app-accent"
+                >
+                  {selectedScenarioId === scenario.id ? "Stop Editing" : "Edit"}
+                </button>
+              </div>
+              {selectedScenarioId === scenario.id && (
+                <p className="mt-1 font-chrome text-[10px] uppercase tracking-[0.08em] text-app-accent">Live editing enabled</p>
+              )}
               <p className="mt-1 text-[11px] text-app-muted">{summaryText(scenario)}</p>
             </div>
           ))}

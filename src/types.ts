@@ -5,6 +5,7 @@ export type RightTab = "chart" | "table";
 export type LeftTab = "parameters" | "fit";
 export type ChartMode = "cumulative" | "growth";
 export type BassView = "cumulativeOnly" | "cumulativePlusRate";
+export type ThemeMode = "dark" | "light";
 
 export interface CoreParams {
   ceilingPct: number;
@@ -111,6 +112,7 @@ export interface AppState {
   activeModel: ModelType;
   core: CoreParams;
   params: ModelParams;
+  editingScenarioId: string | null;
   leftTab: LeftTab;
   rightTab: RightTab;
   chartMode: ChartMode;
@@ -120,6 +122,7 @@ export interface AppState {
   tableSort: TableSortState;
   aboutCollapsed: boolean;
   toast: string | null;
+  theme: ThemeMode;
 }
 
 export interface ComputedSeries {
@@ -132,9 +135,11 @@ export interface ShareableState {
   activeModel: ModelType;
   core: CoreParams;
   params: ModelParams;
+  editingScenarioId: string | null;
   rightTab: RightTab;
   leftTab: LeftTab;
   chartMode: ChartMode;
   bassView: BassView;
   scenarios: Scenario[];
+  theme: ThemeMode;
 }

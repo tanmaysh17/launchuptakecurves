@@ -29,7 +29,7 @@ export function ModelSelector({ activeModel, onSelect }: ModelSelectorProps) {
             className={clsx(
               "rounded-panel border px-3 py-2 text-left transition-all",
               activeModel === model
-                ? "border-app-accent bg-[rgba(0,212,180,0.08)]"
+                ? "border-app-accent bg-[rgb(var(--app-accent)/0.08)]"
                 : "border-app-border bg-app-surface hover:border-app-muted"
             )}
           >

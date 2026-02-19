@@ -1,10 +1,14 @@
 import { applyFitToState } from "../lib/fitting/fitModels";
 import { DEFAULT_CORE, DEFAULT_PARAMS, SCENARIO_COLORS } from "../lib/models";
 import { readShareStateFromUrl } from "../lib/shareState";
-import type { AppState, BassView, ChartMode, FitResult, LeftTab, ModelType, RightTab, Scenario, TableSortState } from "../types";
+import type { AppState, BassView, ChartMode, FitResult, LeftTab, ModelType, RightTab, Scenario, TableSortState, ThemeMode } from "../types";
 
 export type Action =
   | { type: "setActiveModel"; model: ModelType }
+  | { type: "selectScenario"; id: string | null }
+  | { type: "setScenarioModel"; id: string; model: ModelType }
+  | { type: "setScenarioCoreParam"; id: string; key: "ceilingPct" | "launchLag"; value: number }
+  | { type: "setScenarioModelParam"; id: string; key: string; value: number }
   | { type: "setLeftTab"; tab: LeftTab }
   | { type: "setRightTab"; tab: RightTab }
   | { type: "setChartMode"; mode: ChartMode }
@@ -22,7 +26,8 @@ export type Action =
   | { type: "setFitRunning"; value: boolean }
   | { type: "setFitResults"; results: Partial<Record<ModelType, FitResult>> }
   | { type: "setStagedFit"; result: FitResult | null }
-  | { type: "applyStagedFit" };
+  | { type: "applyStagedFit" }
+  | { type: "setTheme"; theme: ThemeMode };
 
 function defaultState(): AppState {
   return {
@@ -35,6 +40,7 @@ function defaultState(): AppState {
       bass: { ...DEFAULT_PARAMS.bass },
       linear: { ...DEFAULT_PARAMS.linear }
     },
+    editingScenarioId: null,
     leftTab: "parameters",
     rightTab: "chart",
     chartMode: "cumulative",
@@ -50,7 +56,8 @@ function defaultState(): AppState {
     },
     tableSort: { key: "period", dir: "asc" },
     aboutCollapsed: false,
-    toast: null
+    toast: null,
+    theme: "dark"
   };
 }
 
@@ -97,7 +104,9 @@ function hydratedState(): AppState {
     leftTab: shared.leftTab ?? base.leftTab,
     chartMode: shared.chartMode ?? base.chartMode,
     bassView: shared.bassView ?? base.bassView,
-    scenarios: Array.isArray(shared.scenarios) ? shared.scenarios.slice(0, 3) : base.scenarios
+    scenarios: Array.isArray(shared.scenarios) ? shared.scenarios.slice(0, 4) : base.scenarios,
+    editingScenarioId: shared.editingScenarioId ?? null,
+    theme: base.theme
   };
 }
 
@@ -107,6 +116,61 @@ export function reducer(state: AppState, action: Action): AppState {
   switch (action.type) {
     case "setActiveModel":
       return { ...state, activeModel: action.model };
+    case "selectScenario":
+      if (!action.id) {
+        return { ...state, editingScenarioId: null };
+      }
+      const selected = state.scenarios.find((s) => s.id === action.id);
+      return {
+        ...state,
+        editingScenarioId: action.id,
+        activeModel: selected?.model ?? state.activeModel
+      };
+    case "setScenarioModel":
+      return {
+        ...state,
+        activeModel: action.model,
+        scenarios: state.scenarios.map((s) =>
+          s.id === action.id
+            ? {
+                ...s,
+                model: action.model,
+                paramsSnapshot: { ...state.params[action.model] }
+              }
+            : s
+        )
+      };
+    case "setScenarioCoreParam":
+      return {
+        ...state,
+        scenarios: state.scenarios.map((s) =>
+          s.id === action.id
+            ? {
+                ...s,
+                coreSnapshot: {
+                  ...s.coreSnapshot,
+                  [action.key]: action.value
+                }
+              }
+            : s
+        )
+      };
+    case "setScenarioModelParam":
+      return {
+        ...state,
+        scenarios: state.scenarios.map((s) =>
+          s.id === action.id
+            ? (() => {
+                const nextParams = { ...(s.paramsSnapshot as unknown as Record<string, number>) };
+                nextParams[action.key] = action.value;
+                return {
+                  ...s,
+                  paramsSnapshot: nextParams as unknown as Scenario["paramsSnapshot"]
+                };
+              })()
+            : s
+        )
+      };
     case "setLeftTab":
       return { ...state, leftTab: action.tab };
     case "setRightTab":
@@ -135,12 +199,15 @@ export function reducer(state: AppState, action: Action): AppState {
         } as AppState["params"]
       };
     case "addScenario":
-      if (state.scenarios.length >= 3) {
-        return { ...state, toast: "Maximum of 3 scenarios reached." };
+      if (state.scenarios.length >= 4) {
+        return { ...state, toast: "Maximum of 4 scenarios reached." };
       }
+      const newScenario = snapshotScenario(state, SCENARIO_COLORS[state.scenarios.length], state.scenarios.length);
       return {
         ...state,
-        scenarios: [...state.scenarios, snapshotScenario(state, SCENARIO_COLORS[state.scenarios.length], state.scenarios.length)]
+        scenarios: [...state.scenarios, newScenario],
+        editingScenarioId: newScenario.id,
+        activeModel: newScenario.model
       };
     case "renameScenario":
       return {
@@ -150,7 +217,8 @@ export function reducer(state: AppState, action: Action): AppState {
     case "clearScenarios":
       return {
         ...state,
-        scenarios: []
+        scenarios: [],
+        editingScenarioId: null
       };
     case "setTableSort":
       return { ...state, tableSort: action.sort };
@@ -173,6 +241,8 @@ export function reducer(state: AppState, action: Action): AppState {
         return state;
       }
       return applyFitToState(state, state.fit.stagedFit);
+    case "setTheme":
+      return { ...state, theme: "dark" };
     default:
       return state;
   }

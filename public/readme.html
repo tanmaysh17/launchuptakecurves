@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Launch Uptake Modeler - Readme</title>
+    <style>
+      body {
+        margin: 0;
+        font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
+        background: #0d1117;
+        color: #e6edf3;
+      }
+      .wrap {
+        max-width: 1000px;
+        margin: 0 auto;
+        padding: 28px 20px 48px;
+      }
+      h1, h2, h3 {
+        margin: 0 0 10px;
+      }
+      h1 {
+        font-size: 28px;
+      }
+      h2 {
+        margin-top: 30px;
+        font-size: 20px;
+      }
+      .card {
+        background: #161b22;
+        border: 1px solid #30363d;
+        border-radius: 10px;
+        padding: 14px 16px;
+        margin-top: 12px;
+      }
+      ul {
+        margin: 8px 0 0 20px;
+      }
+      code {
+        background: #1a2332;
+        border-radius: 6px;
+        padding: 2px 6px;
+      }
+      a {
+        color: #00d4b4;
+      }
+      .muted {
+        color: #8b949e;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <h1>Launch Uptake Modeler - Readme</h1>
+      <p class="muted">
+        Interactive dashboard for forecasting product adoption curves, fitting to historical launch data, and comparing strategic scenarios.
+      </p>
+
+      <h2>What This Tool Does</h2>
+      <div class="card">
+        <ul>
+          <li>Simulates cumulative and incremental adoption over time.</li>
+          <li>Compares up to 4 scenarios on chart, table, and KPI milestones.</li>
+          <li>Fits models to observed data and reports R2, RMSE, MAPE.</li>
+          <li>Exports data and supports shareable URL state.</li>
+        </ul>
+      </div>
+
+      <h2>Model Overview</h2>
+      <div class="card">
+        <h3>1) Logistic</h3>
+        <p>Symmetric S-curve. Best when acceleration/deceleration are balanced and inflection at 50% is reasonable.</p>
+        <p><strong>Parameters:</strong> <code>L</code> ceiling, <code>k</code> steepness, <code>t0</code> inflection timing.</p>
+      </div>
+      <div class="card">
+        <h3>2) Gompertz</h3>
+        <p>Asymmetric S-curve with slower early adoption and inflection near 36.8% of ceiling.</p>
+        <p><strong>Best for:</strong> high early inertia launches (pharma, enterprise, complex onboarding).</p>
+      </div>
+      <div class="card">
+        <h3>3) Richards</h3>
+        <p>Generalized logistic master model. <code>nu</code> controls asymmetry; <code>nu=1</code> equals Logistic.</p>
+        <p><strong>Best for:</strong> uncertain curve shape and analog-data fitting.</p>
+      </div>
+      <div class="card">
+        <h3>4) Bass Diffusion</h3>
+        <p>Mechanistic diffusion model using innovation <code>p</code> and imitation <code>q</code>.</p>
+        <p><strong>Best for:</strong> network effects, social contagion, durable goods.</p>
+      </div>
+      <div class="card">
+        <h3>5) Linear Ramp</h3>
+        <p>Straight ramp baseline with lag and cap. Conservative planning benchmark under capacity/process constraints.</p>
+      </div>
+
+      <h2>Fitting Best Practices</h2>
+      <div class="card">
+        <ul>
+          <li>Use cumulative adoption percentage as input: <code>period,adoption%</code>.</li>
+          <li>Include early and middle phases to identify shape and timing robustly.</li>
+          <li>Compare fit metrics, but also sanity-check business realism.</li>
+        </ul>
+      </div>
+
+      <h2>Scenario Planning Tips</h2>
+      <div class="card">
+        <ul>
+          <li>Create downside/base/upside cases with different k, lag, and ceiling.</li>
+          <li>Use milestone deltas (10/50/90 and peak timing) to communicate timing risk.</li>
+          <li>Use volume mode and TAM for demand/supply planning.</li>
+        </ul>
+      </div>
+
+      <p style="margin-top: 28px"><a href="./">Back to modeler</a></p>
+    </div>
+  </body>
+</html>

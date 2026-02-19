@@ -7,12 +7,14 @@ interface ModelParametersProps {
   params: ModelParams;
   horizon: number;
   onSetModelParam: (model: ModelType, key: string, value: number) => void;
+  compact?: boolean;
 }
 
-export function ModelParameters({ model, params, horizon, onSetModelParam }: ModelParametersProps) {
+export function ModelParameters({ model, params, horizon, onSetModelParam, compact = false }: ModelParametersProps) {
   return (
-    <div className="space-y-3">
+    <div>
       <SectionLabel>Shape Parameters</SectionLabel>
+      <div className={compact ? "grid grid-cols-1 gap-2 lg:grid-cols-2" : "space-y-3"}>
       {model === "logistic" && (
         <>
           <ParameterSlider
@@ -135,6 +137,7 @@ export function ModelParameters({ model, params, horizon, onSetModelParam }: Mod
           hint="Constant adoption gain per period until ceiling is reached."
         />
       )}
+      </div>
     </div>
   );
 }

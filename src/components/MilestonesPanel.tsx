@@ -5,6 +5,7 @@ import { fmtPct } from "../lib/format";
 interface MilestonesPanelProps {
   milestones: Milestones;
   timeUnit: TimeUnit;
+  scenarioMilestones?: Array<{ id: string; name: string; color: string; milestones: Milestones }>;
 }
 
 interface CardData {
@@ -42,15 +43,15 @@ function periodLabel(period: number | null, unit: TimeUnit): string {
   return `${unit === "months" ? "M" : "W"}${period}`;
 }
 
-export function MilestonesPanel({ milestones, timeUnit }: MilestonesPanelProps) {
+export function MilestonesPanel({ milestones, timeUnit, scenarioMilestones = [] }: MilestonesPanelProps) {
   const cards = useMemo<CardData[]>(
     () => [
-      { label: "Reach 10%", value: milestones.reach10, color: "#00d4b4", kind: "period" },
-      { label: "Reach 50%", value: milestones.reach50, color: "#f0a500", kind: "period" },
-      { label: "Reach 90%", value: milestones.reach90, color: "#8b949e", kind: "period" },
-      { label: "Peak Growth", value: milestones.peakGrowthPct, color: "#00d4b4", suffix: "/period", kind: "value" },
-      { label: "Peak At", value: milestones.peakAt, color: "#f0a500", kind: "period" },
-      { label: "Ceiling", value: milestones.ceilingPct, color: "#8b949e", kind: "value" }
+      { label: "Reach 10%", value: milestones.reach10, color: "rgb(var(--app-accent))", kind: "period" },
+      { label: "Reach 50%", value: milestones.reach50, color: "rgb(var(--app-amber))", kind: "period" },
+      { label: "Reach 90%", value: milestones.reach90, color: "rgb(var(--app-muted))", kind: "period" },
+      { label: "Peak Growth", value: milestones.peakGrowthPct, color: "rgb(var(--app-accent))", suffix: "/period", kind: "value" },
+      { label: "Peak At", value: milestones.peakAt, color: "rgb(var(--app-amber))", kind: "period" },
+      { label: "Ceiling", value: milestones.ceilingPct, color: "rgb(var(--app-muted))", kind: "value" }
     ],
     [milestones]
   );
@@ -58,7 +59,7 @@ export function MilestonesPanel({ milestones, timeUnit }: MilestonesPanelProps) 
   return (
     <div className="mt-3 grid grid-cols-1 gap-2 md:grid-cols-3">
       {cards.map((card) => (
-        <MilestoneCard key={card.label} card={card} timeUnit={timeUnit} />
+        <MilestoneCard key={card.label} card={card} timeUnit={timeUnit} scenarioMilestones={scenarioMilestones} />
       ))}
     </div>
   );
@@ -67,9 +68,19 @@ export function MilestonesPanel({ milestones, timeUnit }: MilestonesPanelProps) 
 interface MilestoneCardProps {
   card: CardData;
   timeUnit: TimeUnit;
+  scenarioMilestones: Array<{ id: string; name: string; color: string; milestones: Milestones }>;
 }
 
-function MilestoneCard({ card, timeUnit }: MilestoneCardProps) {
+function scenarioValue(card: CardData, milestones: Milestones): string {
+  if (card.label === "Reach 10%") return milestones.reach10 == null ? "--" : String(milestones.reach10);
+  if (card.label === "Reach 50%") return milestones.reach50 == null ? "--" : String(milestones.reach50);
+  if (card.label === "Reach 90%") return milestones.reach90 == null ? "--" : String(milestones.reach90);
+  if (card.label === "Peak Growth") return fmtPct(milestones.peakGrowthPct);
+  if (card.label === "Peak At") return String(milestones.peakAt);
+  return fmtPct(milestones.ceilingPct);
+}
+
+function MilestoneCard({ card, timeUnit, scenarioMilestones }: MilestoneCardProps) {
   const animated = useAnimatedNumber(card.value ?? 0);
   const text =
     card.value == null
@@ -84,6 +95,19 @@ function MilestoneCard({ card, timeUnit }: MilestoneCardProps) {
       <div className="mt-1 text-[30px] font-semibold leading-none" style={{ color: card.color }}>
         {text}
       </div>
+      {scenarioMilestones.length > 0 && (
+        <div className="mt-2 flex flex-wrap gap-1">
+          {scenarioMilestones.map((scenario) => (
+            <span
+              key={`${card.label}-${scenario.id}`}
+              className="rounded border px-1.5 py-0.5 font-chrome text-[10px] text-app-text"
+              style={{ borderColor: scenario.color }}
+            >
+              {scenario.name}: {scenarioValue(card, scenario.milestones)}
+            </span>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

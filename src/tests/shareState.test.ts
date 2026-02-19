@@ -19,11 +19,13 @@ const sample: ShareableState = {
     bass: { p: 0.03, q: 0.38 },
     linear: { r: 2.5 }
   },
+  editingScenarioId: null,
   rightTab: "chart",
   leftTab: "parameters",
   chartMode: "cumulative",
   bassView: "cumulativeOnly",
-  scenarios: []
+  scenarios: [],
+  theme: "dark"
 };
 
 describe("share state", () => {

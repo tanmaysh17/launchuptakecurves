@@ -2,8 +2,35 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
+:root,
+:root.theme-dark,
+:root[data-theme="dark"] {
   color-scheme: dark;
+  --app-bg: 13 17 23;
+  --app-surface: 22 27 34;
+  --app-elevated: 26 35 50;
+  --app-accent: 0 212 180;
+  --app-amber: 240 165 0;
+  --app-purple: 167 139 250;
+  --app-text: 230 237 243;
+  --app-muted: 139 148 158;
+  --app-border: 48 54 61;
+  --app-success: 63 185 80;
+}
+
+:root.theme-light,
+:root[data-theme="light"] {
+  color-scheme: light;
+  --app-bg: 248 250 253;
+  --app-surface: 255 255 255;
+  --app-elevated: 238 245 252;
+  --app-accent: 0 154 214;
+  --app-amber: 226 144 0;
+  --app-purple: 116 104 244;
+  --app-text: 20 27 35;
+  --app-muted: 94 106 119;
+  --app-border: 205 215 227;
+  --app-success: 31 143 65;
 }
 
 html,
@@ -11,23 +38,82 @@ body,
 #root {
   margin: 0;
   min-height: 100%;
-  background: #0d1117;
+  background: rgb(var(--app-bg));
 }
 
 body {
-  color: #e6edf3;
+  color: rgb(var(--app-text));
   font-family: "IBM Plex Sans", "Segoe UI", -apple-system, BlinkMacSystemFont, sans-serif;
   background:
-    radial-gradient(circle at top right, rgba(0, 212, 180, 0.09), transparent 40%),
-    radial-gradient(circle at left center, rgba(167, 139, 250, 0.08), transparent 35%),
-    #0d1117;
+    radial-gradient(circle at top right, rgb(var(--app-accent) / 0.1), transparent 40%),
+    radial-gradient(circle at left center, rgb(var(--app-purple) / 0.09), transparent 35%),
+    rgb(var(--app-bg));
+}
+
+.app-shell {
+  --app-bg: 13 17 23;
+  --app-surface: 22 27 34;
+  --app-elevated: 26 35 50;
+  --app-accent: 0 212 180;
+  --app-amber: 240 165 0;
+  --app-purple: 167 139 250;
+  --app-text: 230 237 243;
+  --app-muted: 139 148 158;
+  --app-border: 48 54 61;
+  --app-success: 63 185 80;
+  background:
+    radial-gradient(circle at top right, rgb(var(--app-accent) / 0.1), transparent 40%),
+    radial-gradient(circle at left center, rgb(var(--app-purple) / 0.09), transparent 35%),
+    rgb(var(--app-bg));
+}
+
+.app-shell[data-theme="dark"] {
+  --app-bg: 13 17 23;
+  --app-surface: 22 27 34;
+  --app-elevated: 26 35 50;
+  --app-accent: 0 212 180;
+  --app-amber: 240 165 0;
+  --app-purple: 167 139 250;
+  --app-text: 230 237 243;
+  --app-muted: 139 148 158;
+  --app-border: 48 54 61;
+  --app-success: 63 185 80;
+}
+
+.app-shell[data-theme="light"] {
+  --app-bg: 248 250 253;
+  --app-surface: 255 255 255;
+  --app-elevated: 238 245 252;
+  --app-accent: 0 154 214;
+  --app-amber: 226 144 0;
+  --app-purple: 116 104 244;
+  --app-text: 20 27 35;
+  --app-muted: 94 106 119;
+  --app-border: 205 215 227;
+  --app-success: 31 143 65;
+  background:
+    radial-gradient(circle at top right, rgb(var(--app-accent) / 0.2), transparent 42%),
+    radial-gradient(circle at left center, rgb(var(--app-purple) / 0.12), transparent 40%),
+    radial-gradient(circle at bottom left, rgb(var(--app-amber) / 0.1), transparent 45%),
+    rgb(var(--app-bg));
+}
+
+:root.theme-light body,
+:root[data-theme="light"] body,
+body.theme-light,
+body[data-theme="light"] {
+  background:
+    radial-gradient(circle at top right, rgb(var(--app-accent) / 0.16), transparent 42%),
+    radial-gradient(circle at left center, rgb(var(--app-purple) / 0.1), transparent 40%),
+    radial-gradient(circle at bottom left, rgb(var(--app-amber) / 0.08), transparent 45%),
+    rgb(var(--app-bg));
 }
 
 .slider {
   appearance: none;
   height: 6px;
   border-radius: 999px;
-  background: #1a2332;
+  background: rgb(var(--app-elevated));
   outline: none;
 }
 
@@ -36,9 +122,9 @@ body {
   width: 14px;
   height: 14px;
   border-radius: 999px;
-  background: #00d4b4;
-  border: 2px solid #0d1117;
-  box-shadow: 0 0 0 2px rgba(0, 212, 180, 0.2);
+  background: rgb(var(--app-accent));
+  border: 2px solid rgb(var(--app-bg));
+  box-shadow: 0 0 0 2px rgb(var(--app-accent) / 0.2);
   cursor: pointer;
 }
 
@@ -46,13 +132,13 @@ body {
   width: 14px;
   height: 14px;
   border-radius: 999px;
-  background: #00d4b4;
-  border: 2px solid #0d1117;
-  box-shadow: 0 0 0 2px rgba(0, 212, 180, 0.2);
+  background: rgb(var(--app-accent));
+  border: 2px solid rgb(var(--app-bg));
+  box-shadow: 0 0 0 2px rgb(var(--app-accent) / 0.2);
   cursor: pointer;
 }
 
 .slider:hover::-webkit-slider-thumb,
 .slider:hover::-moz-range-thumb {
-  background: #19e7cb;
+  filter: brightness(1.08);
 }

@@ -8,7 +8,7 @@ export const MODEL_LABELS: Record<ModelType, string> = {
   linear: "Linear Ramp"
 };
 
-export const SCENARIO_COLORS = ["#00d4b4", "#f0a500", "#a78bfa"] as const;
+export const SCENARIO_COLORS = ["#00d4b4", "#f0a500", "#a78bfa", "#ff6b9a"] as const;
 
 export const DEFAULT_CORE: CoreParams = {
   ceilingPct: 100,

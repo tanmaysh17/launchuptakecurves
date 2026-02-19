@@ -325,6 +325,7 @@ export function createSyntheticState(model: ModelType): AppState {
       tam: null
     },
     params: DEFAULT_PARAMS,
+    editingScenarioId: null,
     leftTab: "parameters",
     rightTab: "chart",
     chartMode: "cumulative",
@@ -340,6 +341,7 @@ export function createSyntheticState(model: ModelType): AppState {
     },
     tableSort: { key: "period", dir: "asc" },
     aboutCollapsed: false,
-    toast: null
+    toast: null,
+    theme: "dark"
   };
 }

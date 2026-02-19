@@ -60,9 +60,9 @@ function nextDirection(current: TableSortState, key: string): "asc" | "desc" {
 }
 
 function maybeMilestone(period: number, milestones: Milestones): { label: string; color: string } | null {
-  if (milestones.reach10 === period) return { label: "10%", color: "#00d4b4" };
-  if (milestones.reach50 === period) return { label: "50%", color: "#f0a500" };
-  if (milestones.reach90 === period) return { label: "90%", color: "#8b949e" };
+  if (milestones.reach10 === period) return { label: "10%", color: "rgb(var(--app-accent))" };
+  if (milestones.reach50 === period) return { label: "50%", color: "rgb(var(--app-amber))" };
+  if (milestones.reach90 === period) return { label: "90%", color: "rgb(var(--app-muted))" };
   return null;
 }
 
@@ -211,7 +211,7 @@ export function TablePanel({ model, points, scenarios, milestones, tam, timeUnit
                 >
                   <td className="px-2 font-chrome text-xs text-app-text">
                     {periodPrefix} {row.period}
-                    {peak && <span className="ml-1 text-app-amber">^</span>}
+                    {peak && <span className="ml-1 text-app-amber">▲</span>}
                   </td>
                   <td className="px-2 font-mono text-app-text">{fmtPct(row.cumulativePct)}</td>
                   <td className="px-2 font-mono text-app-text">{fmtPct(row.incrementalPct)}</td>
