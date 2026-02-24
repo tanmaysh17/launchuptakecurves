@@ -6,10 +6,10 @@ describe("fitting", () => {
   it("recovers logistic-like synthetic data with strong fit", () => {
     const synthetic = computeSeries({
       model: "logistic",
-      core: { ceilingPct: 92, horizon: 50, launchLag: 3, timeUnit: "months", tam: null },
+      core: { ceilingPct: 92, horizon: 50, launchLag: 3, timeUnit: "months", tam: null, timeToPeak: null },
       params: {
         ...DEFAULT_PARAMS,
-        logistic: { k: 0.28, t0: 16 }
+        logistic: { k: 0.28, t0: 0.34 }
       }
     });
     const observed = synthetic.points

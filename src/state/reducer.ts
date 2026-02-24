@@ -2,7 +2,7 @@ import { applyFitToState } from "../lib/fitting/fitModels";
 import { DEFAULT_CORE, DEFAULT_PARAMS, SCENARIO_COLORS } from "../lib/models";
 import { readShareStateFromUrl } from "../lib/shareState";
 import { readStoredTheme } from "../lib/theme";
-import type { AppState, BassView, ChartMode, FitResult, LeftTab, ModelType, RightTab, Scenario, TableSortState, ThemeMode } from "../types";
+import type { AppState, BassView, ChartMode, FitResult, LeftTab, ModelType, RightTab, Scenario, TableSortState, TargetPoint, ThemeMode } from "../types";
 
 export type Action =
   | { type: "setActiveModel"; model: ModelType }
@@ -28,7 +28,9 @@ export type Action =
   | { type: "setFitResults"; results: Partial<Record<ModelType, FitResult>> }
   | { type: "setStagedFit"; result: FitResult | null }
   | { type: "applyStagedFit" }
-  | { type: "setTheme"; theme: ThemeMode };
+  | { type: "setTheme"; theme: ThemeMode }
+  | { type: "setTargetInput"; value: string }
+  | { type: "setTargets"; targets: TargetPoint[] };
 
 function defaultState(): AppState {
   return {
@@ -53,7 +55,9 @@ function defaultState(): AppState {
       error: null,
       fitResults: {},
       stagedFit: null,
-      isFitting: false
+      isFitting: false,
+      targetInput: "",
+      targets: []
     },
     tableSort: { key: "period", dir: "asc" },
     aboutCollapsed: false,
@@ -244,6 +248,10 @@ export function reducer(state: AppState, action: Action): AppState {
       return applyFitToState(state, state.fit.stagedFit);
     case "setTheme":
       return { ...state, theme: action.theme };
+    case "setTargetInput":
+      return { ...state, fit: { ...state.fit, targetInput: action.value } };
+    case "setTargets":
+      return { ...state, fit: { ...state.fit, targets: action.targets } };
     default:
       return state;
   }

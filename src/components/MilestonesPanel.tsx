@@ -50,14 +50,15 @@ export function MilestonesPanel({ milestones, timeUnit, scenarioMilestones = [] 
       { label: "Reach 50%", value: milestones.reach50, color: "rgb(var(--app-amber))", kind: "period" },
       { label: "Reach 90%", value: milestones.reach90, color: "rgb(var(--app-muted))", kind: "period" },
       { label: "Peak Growth", value: milestones.peakGrowthPct, color: "rgb(var(--app-accent))", suffix: "/period", kind: "value" },
-      { label: "Peak At", value: milestones.peakAt, color: "rgb(var(--app-amber))", kind: "period" },
+      { label: "Peak Growth At", value: milestones.peakGrowthAt, color: "rgb(var(--app-purple))", kind: "period" },
+      { label: "Time to Peak (99%)", value: milestones.peakAt, color: "rgb(var(--app-amber))", kind: "period" },
       { label: "Ceiling", value: milestones.ceilingPct, color: "rgb(var(--app-muted))", kind: "value" }
     ],
     [milestones]
   );
 
   return (
-    <div className="mt-3 grid grid-cols-1 gap-2 md:grid-cols-3">
+    <div className="mt-3 grid grid-cols-1 gap-2 md:grid-cols-4">
       {cards.map((card) => (
         <MilestoneCard key={card.label} card={card} timeUnit={timeUnit} scenarioMilestones={scenarioMilestones} />
       ))}
@@ -76,7 +77,8 @@ function scenarioValue(card: CardData, milestones: Milestones): string {
   if (card.label === "Reach 50%") return milestones.reach50 == null ? "--" : String(milestones.reach50);
   if (card.label === "Reach 90%") return milestones.reach90 == null ? "--" : String(milestones.reach90);
   if (card.label === "Peak Growth") return fmtPct(milestones.peakGrowthPct);
-  if (card.label === "Peak At") return String(milestones.peakAt);
+  if (card.label === "Peak Growth At") return String(milestones.peakGrowthAt);
+  if (card.label === "Time to Peak (99%)") return milestones.peakAt == null ? "--" : String(milestones.peakAt);
   return fmtPct(milestones.ceilingPct);
 }
 

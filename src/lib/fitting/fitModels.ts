@@ -15,26 +15,26 @@ interface PreparedFit {
 
 const FITTABLE_MODELS: ModelType[] = MODEL_ORDER.filter((model) => model !== "linear");
 
-function getDefs(model: ModelType, horizon: number): ParamDef[] {
+function getDefs(model: ModelType, _horizon: number): ParamDef[] {
   switch (model) {
     case "logistic":
       return [
         { key: "k", bound: { min: 0.05, max: 1.0 } },
-        { key: "t0", bound: { min: 1, max: horizon } },
+        { key: "t0", bound: { min: 0.05, max: 0.95 } },
         { key: "ceilingPct", bound: { min: 1, max: 100 } },
         { key: "launchLag", bound: { min: 0, max: 24 } }
       ];
     case "gompertz":
       return [
         { key: "k", bound: { min: 0.05, max: 1.0 } },
-        { key: "t0", bound: { min: 1, max: horizon } },
+        { key: "t0", bound: { min: 0.05, max: 0.95 } },
         { key: "ceilingPct", bound: { min: 1, max: 100 } },
         { key: "launchLag", bound: { min: 0, max: 24 } }
       ];
     case "richards":
       return [
         { key: "k", bound: { min: 0.05, max: 1.0 } },
-        { key: "t0", bound: { min: 1, max: horizon } },
+        { key: "t0", bound: { min: 0.05, max: 0.95 } },
         { key: "nu", bound: { min: 0.1, max: 5.0 } },
         { key: "ceilingPct", bound: { min: 1, max: 100 } },
         { key: "launchLag", bound: { min: 0, max: 24 } }
@@ -113,7 +113,8 @@ function objectiveFor(
         launchLag,
         horizon,
         timeUnit: state.core.timeUnit,
-        tam: null
+        tam: null,
+        timeToPeak: null
       },
       params
     });
@@ -235,7 +236,8 @@ export function fitSingleModel(state: AppState, model: ModelType, data: Observed
       launchLag,
       horizon: prepared.horizon,
       timeUnit: state.core.timeUnit,
-      tam: null
+      tam: null,
+      timeToPeak: null
     },
     params
   });
@@ -322,7 +324,8 @@ export function createSyntheticState(model: ModelType): AppState {
       timeUnit: "months",
       launchLag: 0,
       outputUnit: "percent",
-      tam: null
+      tam: null,
+      timeToPeak: null
     },
     params: DEFAULT_PARAMS,
     editingScenarioId: null,

@@ -14,6 +14,7 @@ export interface CoreParams {
   launchLag: number;
   outputUnit: OutputUnit;
   tam: number | null;
+  timeToPeak: number | null;
 }
 
 export interface LogisticParams {
@@ -72,7 +73,8 @@ export interface Milestones {
   reach50: number | null;
   reach90: number | null;
   peakGrowthPct: number;
-  peakAt: number;
+  peakGrowthAt: number;
+  peakAt: number | null;
   ceilingPct: number;
 }
 
@@ -94,6 +96,11 @@ export interface ObservedPoint {
   adoptionPct: number;
 }
 
+export interface TargetPoint {
+  period: number;
+  adoptionPct: number;
+}
+
 export interface FitState {
   rawInput: string;
   data: ObservedPoint[];
@@ -101,6 +108,8 @@ export interface FitState {
   fitResults: Partial<Record<ModelType, FitResult>>;
   stagedFit: FitResult | null;
   isFitting: boolean;
+  targetInput: string;
+  targets: TargetPoint[];
 }
 
 export interface TableSortState {

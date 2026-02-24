@@ -19,6 +19,7 @@ import type {
   ObservedPoint,
   OutputUnit,
   RightTab,
+  TargetPoint,
   TimeUnit
 } from "../../types";
 import { inflectionTextForRichards } from "../../lib/models";
@@ -45,6 +46,7 @@ interface ChartPanelProps {
   timeUnit: TimeUnit;
   richardsNu: number;
   observed: ObservedPoint[];
+  targets: TargetPoint[];
   onSetRightTab: (tab: RightTab) => void;
   onSetChartMode: (mode: ChartMode) => void;
   onSetBassView: (view: BassView) => void;
@@ -133,6 +135,7 @@ export function ChartPanel({
   timeUnit,
   richardsNu,
   observed,
+  targets,
   onSetRightTab,
   onSetChartMode,
   onSetBassView,
@@ -345,6 +348,21 @@ export function ChartPanel({
                 yAxisId={0}
                 fill={CHART_COLORS.text}
                 name="Observed Data"
+              />
+            )}
+
+            {chartMode === "cumulative" && targets.length > 0 && (
+              <Scatter
+                data={targets.map((t) => ({
+                  period: t.period,
+                  value: outputUnit === "percent" ? t.adoptionPct : ((tam ?? 0) * t.adoptionPct) / 100
+                }))}
+                dataKey="value"
+                xAxisId={0}
+                yAxisId={0}
+                fill={CHART_COLORS.amber}
+                name="Targets"
+                shape="diamond"
               />
             )}
           </ComposedChart>

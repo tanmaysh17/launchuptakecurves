@@ -20,7 +20,7 @@ import { computeScenarioSeries, computeSeries, MODEL_LABELS } from "./lib/models
 import { readShareStateFromUrl, toShareableState, writeShareStateToUrl } from "./lib/shareState";
 import { applyTheme, persistTheme } from "./lib/theme";
 import { initialAppState, reducer } from "./state/reducer";
-import type { FitResult, LeftTab, ModelType, ThemeMode } from "./types";
+import type { FitResult, LeftTab, ModelType, ObservedPoint, TargetPoint, ThemeMode } from "./types";
 
 export default function App() {
   const [state, dispatch] = useReducer(reducer, initialAppState);
@@ -64,7 +64,8 @@ export default function App() {
           horizon: effectiveCore.horizon,
           launchLag: effectiveCore.launchLag,
           timeUnit: effectiveCore.timeUnit,
-          tam: effectiveCore.tam
+          tam: effectiveCore.tam,
+          timeToPeak: effectiveCore.timeToPeak
         },
         params: effectiveParams
       }),
@@ -82,7 +83,8 @@ export default function App() {
       {
         horizon: state.core.horizon,
         timeUnit: state.core.timeUnit,
-        tam: state.core.tam
+        tam: state.core.tam,
+        timeToPeak: state.core.timeToPeak
       },
       state.params
     ).map(({ scenario, series }) => ({
@@ -188,6 +190,30 @@ export default function App() {
   const handleApplyFit = () => {
     dispatch({ type: "applyStagedFit" });
     dispatch({ type: "setToast", value: "Fitted parameters applied." });
+  };
+
+  const handleFitTargets = () => {
+    if (state.fit.targets.length < 2 || state.activeModel === "linear") return;
+    dispatch({ type: "setFitRunning", value: true });
+    const targetData: ObservedPoint[] = state.fit.targets.map((t: TargetPoint) => ({
+      period: t.period,
+      adoptionPct: t.adoptionPct
+    }));
+    setTimeout(() => {
+      const results = fitComparableModels(state, targetData);
+      const map = Object.fromEntries(results.map((result) => [result.model, result])) as Partial<Record<ModelType, FitResult>>;
+      dispatch({ type: "setFitResults", results: map });
+      const staged = map[state.activeModel] ?? bestFitResult(results) ?? null;
+      dispatch({ type: "setStagedFit", result: staged });
+      if (staged) {
+        dispatch({ type: "setActiveModel", model: staged.model });
+      }
+      dispatch({ type: "setFitRunning", value: false });
+      dispatch({
+        type: "setToast",
+        value: staged ? `Target fit complete: ${MODEL_LABELS[staged.model]} staged.` : "Fit did not produce a valid result."
+      });
+    }, 10);
   };
 
   const copyChart = async () => {
@@ -319,6 +345,9 @@ export default function App() {
                     dispatch({ type: "setStagedFit", result });
                     dispatch({ type: "setActiveModel", model: result.model });
                   }}
+                  onTargetInputChange={(value) => dispatch({ type: "setTargetInput", value })}
+                  onTargetsChange={(targets) => dispatch({ type: "setTargets", targets })}
+                  onFitTargets={handleFitTargets}
                 />
               )}
             </div>
@@ -349,6 +378,7 @@ export default function App() {
                     timeUnit={effectiveCore.timeUnit}
                     richardsNu={effectiveParams.richards.nu}
                     observed={state.fit.data}
+                    targets={state.fit.targets}
                     onSetRightTab={(tab) => dispatch({ type: "setRightTab", tab })}
                     onSetChartMode={(mode) => dispatch({ type: "setChartMode", mode })}
                     onSetBassView={(view) => dispatch({ type: "setBassView", view })}

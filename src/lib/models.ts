@@ -16,13 +16,14 @@ export const DEFAULT_CORE: CoreParams = {
   timeUnit: "months",
   launchLag: 0,
   outputUnit: "percent",
-  tam: null
+  tam: null,
+  timeToPeak: null
 };
 
 export const DEFAULT_PARAMS: ModelParams = {
-  logistic: { k: 0.3, t0: 18 },
-  gompertz: { k: 0.25, t0: 18 },
-  richards: { k: 0.3, t0: 18, nu: 1.0 },
+  logistic: { k: 0.3, t0: 0.3 },
+  gompertz: { k: 0.25, t0: 0.3 },
+  richards: { k: 0.3, t0: 0.3, nu: 1.0 },
   bass: { p: 0.03, q: 0.38 },
   linear: { r: 2.5 }
 };
@@ -153,8 +154,43 @@ export function richardsInflectionPctOfCeiling(nu: number): number {
 
 interface ComputeInput {
   model: ModelType;
-  core: Pick<CoreParams, "ceilingPct" | "horizon" | "launchLag" | "timeUnit" | "tam">;
+  core: Pick<CoreParams, "ceilingPct" | "horizon" | "launchLag" | "timeUnit" | "tam" | "timeToPeak">;
   params: ModelParams;
+}
+
+/**
+ * Solve for k given timeToPeak (period when curve should reach 99% of ceiling).
+ * For logistic: 99% => L/(1+exp(-k*(ttp-t0))) = 0.99*L => k = ln(99)/(ttp-t0)
+ * For gompertz: 99% => L*exp(-exp(-k*(ttp-t0))) = 0.99*L => k = -ln(-ln(0.99))/(ttp-t0)
+ * For richards: 99% => L/(1+nu*exp(-k*(ttp-t0)))^(1/nu) = 0.99*L => k = ln(nu*(0.99^(-nu)-1))/(t0Abs-ttp) ... solved below
+ */
+function solveKForTimeToPeak(
+  model: "logistic" | "gompertz" | "richards",
+  timeToPeak: number,
+  t0Abs: number,
+  nu: number
+): number {
+  const ttp = timeToPeak;
+  const denom = ttp - t0Abs;
+  if (Math.abs(denom) < 1e-6) return 0.5;
+
+  if (model === "logistic") {
+    // 0.99 = 1/(1+exp(-k*(ttp-t0))) => exp(-k*d) = 1/99 => k = ln(99)/d
+    return clamp(Math.log(99) / denom, 0.05, 2.0);
+  } else if (model === "gompertz") {
+    // 0.99 = exp(-exp(-k*(ttp-t0))) => -exp(-k*d) = ln(0.99) => k = -ln(-ln(0.99))/d
+    return clamp(-Math.log(-Math.log(0.99)) / denom, 0.05, 2.0);
+  } else {
+    // richards: 0.99 = 1/(1+nu*exp(-k*(ttp-t0)))^(1/nu)
+    // => (1+nu*exp(-k*d))^(1/nu) = 1/0.99
+    // => 1+nu*exp(-k*d) = (1/0.99)^nu
+    // => exp(-k*d) = ((1/0.99)^nu - 1)/nu
+    // => k = -ln(((1/0.99)^nu - 1)/nu) / d
+    const safeNu = Math.max(1e-3, nu);
+    const inner = (Math.pow(1 / 0.99, safeNu) - 1) / safeNu;
+    if (inner <= 0) return 0.5;
+    return clamp(-Math.log(inner) / denom, 0.05, 2.0);
+  }
 }
 
 export function computeSeries(input: ComputeInput): ComputedSeries {
@@ -164,6 +200,10 @@ export function computeSeries(input: ComputeInput): ComputedSeries {
   const cumulativePct: number[] = [];
   const incrementalPct: number[] = [];
   const points = [];
+
+  // Effective time-to-peak in periods after lag
+  const effectiveHorizon = horizon - core.launchLag;
+  const ttp = core.timeToPeak != null ? Math.max(1, core.timeToPeak - core.launchLag) : null;
 
   let bassPrev = 0;
 
@@ -175,25 +215,32 @@ export function computeSeries(input: ComputeInput): ComputedSeries {
       if (rawTe <= 0) {
         cumulative = 0;
       } else {
-        const { k, t0 } = params.logistic;
-        cumulative = L / (1 + Math.exp(-k * (te - t0)));
+        const t0Frac = params.logistic.t0;
+        const t0Abs = t0Frac * effectiveHorizon;
+        const k = ttp != null ? solveKForTimeToPeak("logistic", ttp, t0Abs, 1) : params.logistic.k;
+        cumulative = L / (1 + Math.exp(-k * (te - t0Abs)));
       }
     } else if (model === "gompertz") {
       if (rawTe <= 0) {
         cumulative = 0;
       } else {
-        const { k, t0 } = params.gompertz;
-        cumulative = L * Math.exp(-Math.exp(-k * (te - t0)));
+        const t0Frac = params.gompertz.t0;
+        const t0Abs = t0Frac * effectiveHorizon;
+        const k = ttp != null ? solveKForTimeToPeak("gompertz", ttp, t0Abs, 1) : params.gompertz.k;
+        cumulative = L * Math.exp(-Math.exp(-k * (te - t0Abs)));
       }
     } else if (model === "richards") {
       if (rawTe <= 0) {
         cumulative = 0;
       } else {
-        const { k, t0, nu } = params.richards;
+        const { nu } = params.richards;
+        const t0Frac = params.richards.t0;
+        const t0Abs = t0Frac * effectiveHorizon;
+        const k = ttp != null ? solveKForTimeToPeak("richards", ttp, t0Abs, nu) : params.richards.k;
         if (nu < 1e-3) {
-          cumulative = L * Math.exp(-Math.exp(-k * (te - t0)));
+          cumulative = L * Math.exp(-Math.exp(-k * (te - t0Abs)));
         } else {
-          cumulative = L / Math.pow(1 + nu * Math.exp(-k * (te - t0)), 1 / nu);
+          cumulative = L / Math.pow(1 + nu * Math.exp(-k * (te - t0Abs)), 1 / nu);
         }
       }
     } else if (model === "bass") {
@@ -240,7 +287,7 @@ export function computeSeries(input: ComputeInput): ComputedSeries {
 
 export function computeScenarioSeries(
   scenarios: Scenario[],
-  baseCore: Pick<CoreParams, "horizon" | "timeUnit" | "tam">,
+  baseCore: Pick<CoreParams, "horizon" | "timeUnit" | "tam" | "timeToPeak">,
   params: ModelParams
 ): Array<{ scenario: Scenario; series: ComputedSeries }> {
   return scenarios.map((scenario) => {
@@ -270,7 +317,8 @@ export function computeScenarioSeries(
         launchLag: scenario.coreSnapshot.launchLag,
         horizon: baseCore.horizon,
         timeUnit: baseCore.timeUnit,
-        tam: baseCore.tam
+        tam: baseCore.tam,
+        timeToPeak: baseCore.timeToPeak
       },
       params: scenarioParams
     });

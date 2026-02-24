@@ -1,7 +1,7 @@
 import clsx from "clsx";
 import { MODEL_LABELS } from "../../lib/models";
 import { fmtPct } from "../../lib/format";
-import type { FitResult, FitState, ModelType } from "../../types";
+import type { FitResult, FitState, ModelType, TargetPoint } from "../../types";
 import { SectionLabel } from "../ui/SectionLabel";
 
 interface FitPanelProps {
@@ -12,10 +12,34 @@ interface FitPanelProps {
   onAutoFit: () => void;
   onApplyFit: () => void;
   onStageFit: (result: FitResult) => void;
+  onTargetInputChange: (value: string) => void;
+  onTargetsChange: (targets: TargetPoint[]) => void;
+  onFitTargets: () => void;
 }
 
 const MODEL_COMPARISON_ORDER: ModelType[] = ["logistic", "gompertz", "richards", "bass"];
 const SAMPLE_CSV = "period,adoption%\n1,0.3\n2,0.8\n3,1.4\n4,2.3\n5,3.6\n6,5.2\n7,7.1\n8,9.4\n9,12.0\n10,15.1";
+const SAMPLE_TARGETS = "M3=30%, M6=55%, M12=80%";
+
+function parseTargets(input: string): TargetPoint[] {
+  if (!input.trim()) return [];
+  const targets: TargetPoint[] = [];
+  const parts = input.split(/[,;\n]+/);
+  for (const part of parts) {
+    const trimmed = part.trim();
+    if (!trimmed) continue;
+    // Match patterns like: M3=30%, M6=55, 3=30, M12 at 80%
+    const match = trimmed.match(/^[MW]?(\d+)\s*[=:@]\s*(\d+(?:\.\d+)?)\s*%?\s*$/i);
+    if (match) {
+      const period = parseInt(match[1], 10);
+      const adoptionPct = parseFloat(match[2]);
+      if (period > 0 && adoptionPct >= 0 && adoptionPct <= 100) {
+        targets.push({ period, adoptionPct });
+      }
+    }
+  }
+  return targets.sort((a, b) => a.period - b.period);
+}
 
 function metricCell(value: number): string {
   return Number.isFinite(value) ? value.toFixed(3) : "--";
@@ -37,7 +61,10 @@ export function FitPanel({
   onLoadFileText,
   onAutoFit,
   onApplyFit,
-  onStageFit
+  onStageFit,
+  onTargetInputChange,
+  onTargetsChange,
+  onFitTargets
 }: FitPanelProps) {
   const best = bestResult(Object.values(fit.fitResults).filter(Boolean) as FitResult[]);
   const periods = fit.data.map((d) => d.period);
@@ -54,6 +81,67 @@ export function FitPanel({
   return (
     <div className="space-y-3">
       <SectionLabel>Fit To Data</SectionLabel>
+
+      <div className="rounded-panel border border-app-border bg-app-surface p-3">
+        <label className="mb-2 block font-chrome text-[11px] uppercase tracking-[0.08em] text-app-muted">
+          Quick Targets
+        </label>
+        <input
+          type="text"
+          value={fit.targetInput}
+          onChange={(event) => {
+            onTargetInputChange(event.target.value);
+            onTargetsChange(parseTargets(event.target.value));
+          }}
+          placeholder={SAMPLE_TARGETS}
+          className="w-full rounded-panel border border-app-border bg-app-bg px-3 py-2 font-mono text-xs text-app-text outline-none focus:border-app-accent"
+        />
+        <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+          <div className="text-[11px] text-app-muted">
+            {fit.targets.length > 0
+              ? `${fit.targets.length} target${fit.targets.length > 1 ? "s" : ""} set`
+              : "e.g. M3=30%, M6=55%, M12=80%"}
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                onTargetInputChange(SAMPLE_TARGETS);
+                onTargetsChange(parseTargets(SAMPLE_TARGETS));
+              }}
+              className="rounded border border-app-border px-2 py-1 font-chrome text-[10px] uppercase tracking-[0.08em] text-app-text hover:border-app-accent hover:text-app-accent"
+            >
+              Example
+            </button>
+            <button
+              type="button"
+              onClick={onFitTargets}
+              disabled={fit.targets.length < 2 || activeModel === "linear" || fit.isFitting}
+              className={clsx(
+                "rounded border px-2 py-1 font-chrome text-[10px] uppercase tracking-[0.08em]",
+                fit.targets.length >= 2 && activeModel !== "linear" && !fit.isFitting
+                  ? "border-app-accent bg-[rgb(var(--app-accent)/0.12)] text-app-accent"
+                  : "cursor-not-allowed border-app-border text-app-muted"
+              )}
+            >
+              Fit Targets
+            </button>
+          </div>
+        </div>
+        {fit.targets.length > 0 && (
+          <div className="mt-2 flex flex-wrap gap-1">
+            {fit.targets.map((t) => (
+              <span
+                key={t.period}
+                className="rounded bg-[rgb(var(--app-accent)/0.12)] px-2 py-0.5 font-mono text-[11px] text-app-accent"
+              >
+                M{t.period}={t.adoptionPct}%
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
+
       <div className="rounded-panel border border-app-border bg-app-surface/70 p-3 text-sm text-app-text">
         <p className="text-app-muted">Turn analog launch data into calibrated model parameters in four steps.</p>
         <div className="mt-2 grid gap-2 md:grid-cols-2">

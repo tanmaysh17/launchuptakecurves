@@ -31,18 +31,18 @@ export function ModelParameters({ model, params, horizon, onSetModelParam, compa
             max={1}
             step={0.01}
             onChange={(value) => onSetModelParam("logistic", "k", value)}
-            hint="Controls how quickly uptake accelerates and saturates."
+            hint="Controls how quickly uptake accelerates and saturates. Overridden when Time to Peak is enabled."
           />
           <ParameterSlider
             id="log-t0"
-            label="t0 Inflection"
+            label="Responsiveness"
             value={params.logistic.t0}
-            min={1}
-            max={horizon}
-            step={1}
-            onChange={(value) => onSetModelParam("logistic", "t0", Math.round(value))}
-            formatter={(v) => `${Math.round(v)}`}
-            hint="Period of fastest growth; logistic inflection is always at 50% ceiling."
+            min={0.05}
+            max={0.95}
+            step={0.01}
+            onChange={(value) => onSetModelParam("logistic", "t0", value)}
+            formatter={(v) => v.toFixed(2)}
+            hint="Inflection timing as fraction of horizon (0=early, 1=late). Logistic inflects at 50% ceiling."
           />
         </>
       )}
@@ -56,18 +56,18 @@ export function ModelParameters({ model, params, horizon, onSetModelParam, compa
             max={1}
             step={0.01}
             onChange={(value) => onSetModelParam("gompertz", "k", value)}
-            hint="Controls curve steepness once adoption starts moving."
+            hint="Controls curve steepness once adoption starts moving. Overridden when Time to Peak is enabled."
           />
           <ParameterSlider
             id="gom-t0"
-            label="t0 Inflection"
+            label="Responsiveness"
             value={params.gompertz.t0}
-            min={1}
-            max={horizon}
-            step={1}
-            onChange={(value) => onSetModelParam("gompertz", "t0", Math.round(value))}
-            formatter={(v) => `${Math.round(v)}`}
-            hint="Reference inflection period; Gompertz inflects near 36.8% of ceiling."
+            min={0.05}
+            max={0.95}
+            step={0.01}
+            onChange={(value) => onSetModelParam("gompertz", "t0", value)}
+            formatter={(v) => v.toFixed(2)}
+            hint="Inflection timing as fraction of horizon (0=early, 1=late). Gompertz inflects near 36.8% ceiling."
           />
         </>
       )}
@@ -81,18 +81,18 @@ export function ModelParameters({ model, params, horizon, onSetModelParam, compa
             max={1}
             step={0.01}
             onChange={(value) => onSetModelParam("richards", "k", value)}
-            hint="Global growth steepness for the generalized logistic family."
+            hint="Global growth steepness. Overridden when Time to Peak is enabled."
           />
           <ParameterSlider
             id="rich-t0"
-            label="t0 Reference Time"
+            label="Responsiveness"
             value={params.richards.t0}
-            min={1}
-            max={horizon}
-            step={1}
-            onChange={(value) => onSetModelParam("richards", "t0", Math.round(value))}
-            formatter={(v) => `${Math.round(v)}`}
-            hint="Reference timing anchor that combines with shape parameter nu."
+            min={0.05}
+            max={0.95}
+            step={0.01}
+            onChange={(value) => onSetModelParam("richards", "t0", value)}
+            formatter={(v) => v.toFixed(2)}
+            hint="Inflection timing as fraction of horizon (0=early, 1=late). Combines with shape parameter nu."
           />
           <ParameterSlider
             id="rich-nu"

@@ -8,6 +8,8 @@ interface CoreParametersProps {
 }
 
 export function CoreParameters({ core, onSetCore }: CoreParametersProps) {
+  const ttpEnabled = core.timeToPeak != null;
+
   return (
     <div className="space-y-3">
       <SectionLabel>Core Parameters</SectionLabel>
@@ -44,6 +46,33 @@ export function CoreParameters({ core, onSetCore }: CoreParametersProps) {
         formatter={(v) => `${Math.round(v)}`}
         hint="Periods of near-zero uptake before launch momentum begins."
       />
+      <div>
+        <div className="mb-1 flex items-center justify-between">
+          <label className="font-chrome text-[10px] uppercase tracking-[0.08em] text-app-muted">
+            Time to Peak (99%)
+          </label>
+          <button
+            type="button"
+            onClick={() => onSetCore("timeToPeak", ttpEnabled ? null : Math.round(core.horizon * 0.6))}
+            className="rounded border border-app-border px-1.5 py-0.5 font-chrome text-[9px] uppercase tracking-[0.08em] text-app-muted hover:border-app-accent hover:text-app-accent"
+          >
+            {ttpEnabled ? "Disable" : "Enable"}
+          </button>
+        </div>
+        {ttpEnabled && (
+          <ParameterSlider
+            id="ttp"
+            label=""
+            value={core.timeToPeak!}
+            min={core.launchLag + 2}
+            max={core.horizon}
+            step={1}
+            onChange={(value) => onSetCore("timeToPeak", Math.round(value))}
+            formatter={(v) => `${Math.round(v)}`}
+            hint="Auto-adjusts steepness (k) so the curve reaches 99% of ceiling by this period. Overrides k slider."
+          />
+        )}
+      </div>
     </div>
   );
 }

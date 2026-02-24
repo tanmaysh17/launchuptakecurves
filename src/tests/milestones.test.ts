@@ -9,7 +9,8 @@ describe("milestones", () => {
     expect(m.reach10).toBe(3);
     expect(m.reach50).toBe(5);
     expect(m.reach90).toBe(7);
-    expect(m.peakAt).toBe(5);
+    expect(m.peakGrowthAt).toBe(5);
+    expect(m.peakAt).toBeNull();
   });
 
   it("returns null for unreached milestone", () => {

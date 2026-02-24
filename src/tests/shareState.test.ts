@@ -10,12 +10,13 @@ const sample: ShareableState = {
     timeUnit: "months",
     launchLag: 2,
     outputUnit: "percent",
-    tam: null
+    tam: null,
+    timeToPeak: null
   },
   params: {
-    logistic: { k: 0.3, t0: 18 },
-    gompertz: { k: 0.25, t0: 18 },
-    richards: { k: 0.3, t0: 18, nu: 1.2 },
+    logistic: { k: 0.3, t0: 0.25 },
+    gompertz: { k: 0.25, t0: 0.25 },
+    richards: { k: 0.3, t0: 0.25, nu: 1.2 },
     bass: { p: 0.03, q: 0.38 },
     linear: { r: 2.5 }
   },
