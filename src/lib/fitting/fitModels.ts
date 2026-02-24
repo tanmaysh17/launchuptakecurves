@@ -340,7 +340,9 @@ export function createSyntheticState(model: ModelType): AppState {
       error: null,
       fitResults: {},
       stagedFit: null,
-      isFitting: false
+      isFitting: false,
+      targetInput: "",
+      targets: []
     },
     tableSort: { key: "period", dir: "asc" },
     aboutCollapsed: false,

@@ -10,7 +10,7 @@ interface ModelParametersProps {
   compact?: boolean;
 }
 
-export function ModelParameters({ model, params, horizon, onSetModelParam, compact = false }: ModelParametersProps) {
+export function ModelParameters({ model, params, horizon: _horizon, onSetModelParam, compact = false }: ModelParametersProps) {
   const layoutClass = compact
     ? model === "linear"
       ? "grid grid-cols-1 gap-2"
