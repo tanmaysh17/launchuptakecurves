@@ -20,7 +20,7 @@ import { computeScenarioSeries, computeSeries, MODEL_LABELS } from "./lib/models
 import { readShareStateFromUrl, toShareableState, writeShareStateToUrl } from "./lib/shareState";
 import { applyTheme, persistTheme } from "./lib/theme";
 import { initialAppState, reducer } from "./state/reducer";
-import type { FitResult, LeftTab, ModelType, RightTab } from "./types";
+import type { FitResult, LeftTab, ModelType, ThemeMode } from "./types";
 
 export default function App() {
   const [state, dispatch] = useReducer(reducer, initialAppState);
@@ -153,9 +153,14 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    applyTheme("dark");
-    persistTheme("dark");
-  }, []);
+    applyTheme(state.theme);
+    persistTheme(state.theme);
+  }, [state.theme]);
+
+  const toggleTheme = () => {
+    const next: ThemeMode = state.theme === "light" ? "dark" : "light";
+    dispatch({ type: "setTheme", theme: next });
+  };
 
   const handleAutoFit = () => {
     if (!state.fit.data.length || state.activeModel === "linear") {
@@ -194,7 +199,7 @@ export default function App() {
     const blob = await toBlob(node, {
       cacheBust: true,
       pixelRatio: 2,
-      backgroundColor: bgColor ? `rgb(${bgColor})` : "rgb(13,17,23)"
+      backgroundColor: bgColor ? `rgb(${bgColor})` : "rgb(248,250,253)"
     });
     if (!blob) {
       dispatch({ type: "setToast", value: "Unable to create chart image." });
@@ -234,7 +239,7 @@ export default function App() {
   };
 
   return (
-    <div className="app-shell min-h-screen bg-app-bg text-app-text" data-theme="dark">
+    <div className="app-shell min-h-screen bg-app-bg text-app-text" data-theme={state.theme}>
       <div className="mx-auto max-w-[1600px] p-4 md:p-5">
         <div className="mb-4 flex items-end justify-between gap-3">
           <div>
@@ -242,6 +247,13 @@ export default function App() {
             <p className="text-sm text-app-muted">Interactive adoption forecasting with curve fitting, scenarios, and export-ready outputs.</p>
           </div>
           <div className="flex items-center gap-2">
+            <button
+              onClick={toggleTheme}
+              className="rounded border border-app-border px-3 py-1.5 font-chrome text-[11px] uppercase tracking-[0.08em] text-app-text hover:border-app-accent hover:text-app-accent"
+              title={state.theme === "light" ? "Switch to dark mode" : "Switch to light mode"}
+            >
+              {state.theme === "light" ? "Dark" : "Light"}
+            </button>
             <a
               href="./readme.html"
               target="_blank"
@@ -316,17 +328,6 @@ export default function App() {
             <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_320px]">
               <div>
                 <div className="mb-3 flex items-center justify-between gap-3">
-                  <div className="min-w-[240px]">
-                    <PillTabs<RightTab>
-                      value={state.rightTab}
-                      onChange={(tab) => dispatch({ type: "setRightTab", tab })}
-                      options={[
-                        { key: "chart", label: "Chart" },
-                        { key: "table", label: "Table" }
-                      ]}
-                      large
-                    />
-                  </div>
                   <div className="rounded border border-app-border px-2 py-1 font-chrome text-[10px] uppercase tracking-[0.08em] text-app-muted">
                     {editingScenario
                       ? `Editing: ${editingScenario.name} (${MODEL_LABELS[effectiveModel]})`
@@ -337,6 +338,7 @@ export default function App() {
                 {state.rightTab === "chart" ? (
                   <ChartPanel
                     model={effectiveModel}
+                    rightTab={state.rightTab}
                     points={activeSeries.points}
                     scenarios={scenarioSeries}
                     milestones={milestones}
@@ -347,6 +349,7 @@ export default function App() {
                     timeUnit={effectiveCore.timeUnit}
                     richardsNu={effectiveParams.richards.nu}
                     observed={state.fit.data}
+                    onSetRightTab={(tab) => dispatch({ type: "setRightTab", tab })}
                     onSetChartMode={(mode) => dispatch({ type: "setChartMode", mode })}
                     onSetBassView={(view) => dispatch({ type: "setBassView", view })}
                     onCopyChart={() => {
@@ -359,12 +362,14 @@ export default function App() {
                 ) : (
                   <TablePanel
                     model={effectiveModel}
+                    rightTab={state.rightTab}
                     points={activeSeries.points}
                     scenarios={scenarioSeries}
                     milestones={milestones}
                     tam={effectiveCore.tam}
                     timeUnit={effectiveCore.timeUnit}
                     sort={state.tableSort}
+                    onSetRightTab={(tab) => dispatch({ type: "setRightTab", tab })}
                     onSort={(sort) => dispatch({ type: "setTableSort", sort })}
                     onCopyChart={() => {
                       void copyChart();
@@ -382,12 +387,6 @@ export default function App() {
               </div>
               <aside className="space-y-3">
                 <div className="rounded-panel border border-app-border bg-app-surface p-3">
-                  <DisplayControls
-                    core={state.core}
-                    onSetCore={(key, value) => dispatch({ type: "setCoreParam", key, value })}
-                  />
-                </div>
-                <div className="rounded-panel border border-app-border bg-app-surface p-3">
                   <ModelParameters
                     model={effectiveModel}
                     params={effectiveParams}
@@ -398,6 +397,12 @@ export default function App() {
                         : dispatch({ type: "setModelParam", model, key, value })
                     }
                     compact
+                  />
+                </div>
+                <div className="rounded-panel border border-app-border bg-app-surface p-3">
+                  <DisplayControls
+                    core={state.core}
+                    onSetCore={(key, value) => dispatch({ type: "setCoreParam", key, value })}
                   />
                 </div>
               </aside>

@@ -15,9 +15,19 @@ interface FitPanelProps {
 }
 
 const MODEL_COMPARISON_ORDER: ModelType[] = ["logistic", "gompertz", "richards", "bass"];
+const SAMPLE_CSV = "period,adoption%\n1,0.3\n2,0.8\n3,1.4\n4,2.3\n5,3.6\n6,5.2\n7,7.1\n8,9.4\n9,12.0\n10,15.1";
 
 function metricCell(value: number): string {
   return Number.isFinite(value) ? value.toFixed(3) : "--";
+}
+
+function isNonDecreasing(values: number[]): boolean {
+  for (let i = 1; i < values.length; i += 1) {
+    if (values[i] + 1e-9 < values[i - 1]) {
+      return false;
+    }
+  }
+  return true;
 }
 
 export function FitPanel({
@@ -30,29 +40,38 @@ export function FitPanel({
   onStageFit
 }: FitPanelProps) {
   const best = bestResult(Object.values(fit.fitResults).filter(Boolean) as FitResult[]);
+  const periods = fit.data.map((d) => d.period);
+  const adoptions = fit.data.map((d) => d.adoptionPct);
+  const hasData = fit.data.length > 0;
+  const minPeriod = hasData ? Math.min(...periods) : null;
+  const maxPeriod = hasData ? Math.max(...periods) : null;
+  const lastAdoption = hasData ? adoptions[adoptions.length - 1] : null;
+  const monotonic = isNonDecreasing(adoptions);
+  const lowPointCount = fit.data.length > 0 && fit.data.length < 6;
+  const fitDisabledReason =
+    activeModel === "linear" ? "Linear Ramp does not require curve fitting." : !fit.data.length ? "Load data to enable fitting." : null;
 
   return (
     <div className="space-y-3">
       <SectionLabel>Fit To Data</SectionLabel>
       <div className="rounded-panel border border-app-border bg-app-surface/70 p-3 text-sm text-app-text">
-        <p className="text-app-muted">
-          Fit to Data estimates model parameters from observed adoption points so your forecast shape reflects real launch evidence.
-        </p>
+        <p className="text-app-muted">Turn analog launch data into calibrated model parameters in four steps.</p>
         <div className="mt-2 grid gap-2 md:grid-cols-2">
           <div>
-            <div className="font-chrome text-[11px] uppercase tracking-[0.08em] text-app-muted">How To Use</div>
+            <div className="font-chrome text-[11px] uppercase tracking-[0.08em] text-app-muted">Workflow</div>
             <ul className="mt-1 space-y-1 text-xs text-app-muted">
-              <li>Paste or upload two columns: period, adoption%.</li>
-              <li>Click Auto-Fit to optimize parameters for each model.</li>
-              <li>Review R2, RMSE, and MAPE before applying.</li>
+              <li>1. Paste/upload cumulative data: period, adoption%.</li>
+              <li>2. Check parsed status and data quality flags.</li>
+              <li>3. Click Auto-Fit to estimate parameters.</li>
+              <li>4. Stage best model, then Apply Fitted Parameters.</li>
             </ul>
           </div>
           <div>
-            <div className="font-chrome text-[11px] uppercase tracking-[0.08em] text-app-muted">Best Practices</div>
+            <div className="font-chrome text-[11px] uppercase tracking-[0.08em] text-app-muted">Input Rules</div>
             <ul className="mt-1 space-y-1 text-xs text-app-muted">
-              <li>Use cumulative adoption data, not period-only sales.</li>
-              <li>Include enough early and mid-stage points to identify shape.</li>
-              <li>Treat very high R2 with caution when sample size is small.</li>
+              <li>Two columns only, header optional, delimiters: comma/tab/semicolon.</li>
+              <li>Adoption must be percentage values in [0, 100].</li>
+              <li>Use cumulative adoption (not per-period sales).</li>
             </ul>
           </div>
         </div>
@@ -64,11 +83,47 @@ export function FitPanel({
         <textarea
           value={fit.rawInput}
           onChange={(event) => onRawInputChange(event.target.value)}
-          placeholder={"period,adoption%\n1,0.3\n2,0.8\n3,1.4"}
+          placeholder={SAMPLE_CSV}
           className="h-36 w-full resize-y rounded-panel border border-app-border bg-app-bg px-3 py-2 font-mono text-xs text-app-text outline-none focus:border-app-accent"
         />
+        <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+          <div className="text-[11px] text-app-muted">Format: period,adoption% (e.g., 1,0.3)</div>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => onRawInputChange(SAMPLE_CSV)}
+              className="rounded border border-app-border px-2 py-1 font-chrome text-[10px] uppercase tracking-[0.08em] text-app-text hover:border-app-accent hover:text-app-accent"
+            >
+              Use Example
+            </button>
+            <button
+              type="button"
+              onClick={() => onRawInputChange("")}
+              className="rounded border border-app-border px-2 py-1 font-chrome text-[10px] uppercase tracking-[0.08em] text-app-muted hover:text-app-text"
+            >
+              Clear
+            </button>
+          </div>
+        </div>
         <FileDropZone onLoadFileText={onLoadFileText} />
         {fit.error && <p className="mt-2 text-xs text-red-400">{fit.error}</p>}
+        {!fit.error && fit.data.length > 0 && (
+          <div className="mt-3 rounded-panel border border-app-border bg-app-bg/60 p-2">
+            <div className="font-chrome text-[10px] uppercase tracking-[0.08em] text-app-muted">Parsed Data Status</div>
+            <div className="mt-1 grid grid-cols-2 gap-2 text-xs text-app-text">
+              <div>Rows: {fit.data.length}</div>
+              <div>
+                Periods: {minPeriod} to {maxPeriod}
+              </div>
+              <div>Latest Adoption: {lastAdoption == null ? "--" : fmtPct(lastAdoption)}</div>
+              <div>Monotonic Cumulative: {monotonic ? "Yes" : "No"}</div>
+            </div>
+            <div className="mt-2 space-y-1 text-[11px]">
+              {!monotonic && <div className="text-red-400">Warning: adoption decreases in at least one period.</div>}
+              {lowPointCount && <div className="text-app-amber">Tip: use at least 6 points for more stable fit.</div>}
+            </div>
+          </div>
+        )}
         <div className="mt-3 flex flex-wrap gap-2">
           <button
             type="button"
@@ -97,6 +152,10 @@ export function FitPanel({
             Apply Fitted Parameters
           </button>
         </div>
+        {fitDisabledReason && <p className="mt-2 text-xs text-app-muted">{fitDisabledReason}</p>}
+        {!fitDisabledReason && (
+          <p className="mt-2 text-xs text-app-muted">Auto-Fit runs bounded optimization and compares Logistic, Gompertz, Richards, and Bass.</p>
+        )}
       </div>
 
       {fit.data.length > 0 && (
@@ -154,7 +213,7 @@ export function FitPanel({
                               : "cursor-not-allowed border-app-border text-app-muted"
                           )}
                         >
-                          Switch To This
+                          Stage Model
                         </button>
                       </td>
                     </tr>

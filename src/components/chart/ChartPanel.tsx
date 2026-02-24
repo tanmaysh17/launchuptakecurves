@@ -10,7 +10,17 @@ import {
   XAxis,
   YAxis
 } from "recharts";
-import type { BassView, ChartMode, CurvePoint, Milestones, ModelType, ObservedPoint, OutputUnit, TimeUnit } from "../../types";
+import type {
+  BassView,
+  ChartMode,
+  CurvePoint,
+  Milestones,
+  ModelType,
+  ObservedPoint,
+  OutputUnit,
+  RightTab,
+  TimeUnit
+} from "../../types";
 import { inflectionTextForRichards } from "../../lib/models";
 import { fmtPct, fmtVolume } from "../../lib/format";
 import { PillTabs } from "../ui/PillTabs";
@@ -24,6 +34,7 @@ interface ScenarioSeries {
 
 interface ChartPanelProps {
   model: ModelType;
+  rightTab: RightTab;
   points: CurvePoint[];
   scenarios: ScenarioSeries[];
   milestones: Milestones;
@@ -34,6 +45,7 @@ interface ChartPanelProps {
   timeUnit: TimeUnit;
   richardsNu: number;
   observed: ObservedPoint[];
+  onSetRightTab: (tab: RightTab) => void;
   onSetChartMode: (mode: ChartMode) => void;
   onSetBassView: (view: BassView) => void;
   onCopyChart: () => void;
@@ -110,6 +122,7 @@ function makeTicks(horizon: number): number[] {
 
 export function ChartPanel({
   model,
+  rightTab,
   points,
   scenarios,
   milestones,
@@ -120,6 +133,7 @@ export function ChartPanel({
   timeUnit,
   richardsNu,
   observed,
+  onSetRightTab,
   onSetChartMode,
   onSetBassView,
   onCopyChart,
@@ -168,6 +182,15 @@ export function ChartPanel({
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          <PillTabs<RightTab>
+            value={rightTab}
+            onChange={onSetRightTab}
+            options={[
+              { key: "chart", label: "Chart" },
+              { key: "table", label: "Table" }
+            ]}
+            large
+          />
           <PillTabs<ChartMode>
             value={chartMode}
             onChange={onSetChartMode}

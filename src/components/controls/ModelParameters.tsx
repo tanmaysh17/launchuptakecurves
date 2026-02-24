@@ -11,10 +11,16 @@ interface ModelParametersProps {
 }
 
 export function ModelParameters({ model, params, horizon, onSetModelParam, compact = false }: ModelParametersProps) {
+  const layoutClass = compact
+    ? model === "linear"
+      ? "grid grid-cols-1 gap-2"
+      : "grid grid-cols-1 gap-2 lg:grid-cols-2"
+    : "space-y-3";
+
   return (
     <div>
       <SectionLabel>Shape Parameters</SectionLabel>
-      <div className={compact ? "grid grid-cols-1 gap-2 lg:grid-cols-2" : "space-y-3"}>
+      <div className={layoutClass}>
       {model === "logistic" && (
         <>
           <ParameterSlider
@@ -127,13 +133,13 @@ export function ModelParameters({ model, params, horizon, onSetModelParam, compa
       {model === "linear" && (
         <ParameterSlider
           id="lin-r"
-          label="r Ramp Rate"
+          label="r Ramp Rate (%/period)"
           value={params.linear.r}
           min={0.5}
           max={20}
           step={0.1}
           onChange={(value) => onSetModelParam("linear", "r", value)}
-          formatter={(v) => `${v.toFixed(2)}%/period`}
+          formatter={(v) => v.toFixed(2)}
           hint="Constant adoption gain per period until ceiling is reached."
         />
       )}

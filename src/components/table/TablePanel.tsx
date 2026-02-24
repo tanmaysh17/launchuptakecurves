@@ -1,8 +1,9 @@
 import clsx from "clsx";
-import type { CurvePoint, Milestones, ModelType, TableSortState, TimeUnit } from "../../types";
+import type { CurvePoint, Milestones, ModelType, RightTab, TableSortState, TimeUnit } from "../../types";
 import { fmtPct, fmtVolume, todayStamp } from "../../lib/format";
 import { serializeRowsToCsv, serializeRowsToTsv } from "../../lib/csv";
 import { MODEL_LABELS } from "../../lib/models";
+import { PillTabs } from "../ui/PillTabs";
 
 interface ScenarioSeries {
   id: string;
@@ -12,12 +13,14 @@ interface ScenarioSeries {
 
 interface TablePanelProps {
   model: ModelType;
+  rightTab: RightTab;
   points: CurvePoint[];
   scenarios: ScenarioSeries[];
   milestones: Milestones;
   tam: number | null;
   timeUnit: TimeUnit;
   sort: TableSortState;
+  onSetRightTab: (tab: RightTab) => void;
   onSort: (sort: TableSortState) => void;
   onCopyChart: () => void;
 }
@@ -66,7 +69,19 @@ function maybeMilestone(period: number, milestones: Milestones): { label: string
   return null;
 }
 
-export function TablePanel({ model, points, scenarios, milestones, tam, timeUnit, sort, onSort, onCopyChart }: TablePanelProps) {
+export function TablePanel({
+  model,
+  rightTab,
+  points,
+  scenarios,
+  milestones,
+  tam,
+  timeUnit,
+  sort,
+  onSetRightTab,
+  onSort,
+  onCopyChart
+}: TablePanelProps) {
   const rows: Row[] = points.map((point, index) => ({
     period: point.period,
     cumulativePct: point.cumulativePct,
@@ -123,7 +138,18 @@ export function TablePanel({ model, points, scenarios, milestones, tam, timeUnit
   return (
     <div className="rounded-panel border border-app-border bg-app-surface p-3">
       <div className="mb-3 flex items-center justify-between">
-        <h2 className="font-chrome text-[11px] uppercase tracking-[0.1em] text-app-muted">Table</h2>
+        <div className="flex items-center gap-2">
+          <h2 className="font-chrome text-[11px] uppercase tracking-[0.1em] text-app-muted">Table</h2>
+          <PillTabs<RightTab>
+            value={rightTab}
+            onChange={onSetRightTab}
+            options={[
+              { key: "chart", label: "Chart" },
+              { key: "table", label: "Table" }
+            ]}
+            large
+          />
+        </div>
         <div className="flex items-center gap-2">
           <button
             type="button"

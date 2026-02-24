@@ -3,21 +3,6 @@
 @tailwind utilities;
 
 :root,
-:root.theme-dark,
-:root[data-theme="dark"] {
-  color-scheme: dark;
-  --app-bg: 13 17 23;
-  --app-surface: 22 27 34;
-  --app-elevated: 26 35 50;
-  --app-accent: 0 212 180;
-  --app-amber: 240 165 0;
-  --app-purple: 167 139 250;
-  --app-text: 230 237 243;
-  --app-muted: 139 148 158;
-  --app-border: 48 54 61;
-  --app-success: 63 185 80;
-}
-
 :root.theme-light,
 :root[data-theme="light"] {
   color-scheme: light;
@@ -33,6 +18,21 @@
   --app-success: 31 143 65;
 }
 
+:root.theme-dark,
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --app-bg: 13 17 23;
+  --app-surface: 22 27 34;
+  --app-elevated: 26 35 50;
+  --app-accent: 0 212 180;
+  --app-amber: 240 165 0;
+  --app-purple: 167 139 250;
+  --app-text: 230 237 243;
+  --app-muted: 139 148 158;
+  --app-border: 48 54 61;
+  --app-success: 63 185 80;
+}
+
 html,
 body,
 #root {
@@ -45,25 +45,16 @@ body {
   color: rgb(var(--app-text));
   font-family: "IBM Plex Sans", "Segoe UI", -apple-system, BlinkMacSystemFont, sans-serif;
   background:
-    radial-gradient(circle at top right, rgb(var(--app-accent) / 0.1), transparent 40%),
-    radial-gradient(circle at left center, rgb(var(--app-purple) / 0.09), transparent 35%),
+    radial-gradient(circle at top right, rgb(var(--app-accent) / 0.16), transparent 42%),
+    radial-gradient(circle at left center, rgb(var(--app-purple) / 0.1), transparent 40%),
+    radial-gradient(circle at bottom left, rgb(var(--app-amber) / 0.08), transparent 45%),
     rgb(var(--app-bg));
 }
 
 .app-shell {
-  --app-bg: 13 17 23;
-  --app-surface: 22 27 34;
-  --app-elevated: 26 35 50;
-  --app-accent: 0 212 180;
-  --app-amber: 240 165 0;
-  --app-purple: 167 139 250;
-  --app-text: 230 237 243;
-  --app-muted: 139 148 158;
-  --app-border: 48 54 61;
-  --app-success: 63 185 80;
   background:
-    radial-gradient(circle at top right, rgb(var(--app-accent) / 0.1), transparent 40%),
-    radial-gradient(circle at left center, rgb(var(--app-purple) / 0.09), transparent 35%),
+    radial-gradient(circle at top right, rgb(var(--app-accent) / 0.1), transparent 42%),
+    radial-gradient(circle at left center, rgb(var(--app-purple) / 0.09), transparent 40%),
     rgb(var(--app-bg));
 }
 
@@ -95,17 +86,6 @@ body {
     radial-gradient(circle at top right, rgb(var(--app-accent) / 0.2), transparent 42%),
     radial-gradient(circle at left center, rgb(var(--app-purple) / 0.12), transparent 40%),
     radial-gradient(circle at bottom left, rgb(var(--app-amber) / 0.1), transparent 45%),
-    rgb(var(--app-bg));
-}
-
-:root.theme-light body,
-:root[data-theme="light"] body,
-body.theme-light,
-body[data-theme="light"] {
-  background:
-    radial-gradient(circle at top right, rgb(var(--app-accent) / 0.16), transparent 42%),
-    radial-gradient(circle at left center, rgb(var(--app-purple) / 0.1), transparent 40%),
-    radial-gradient(circle at bottom left, rgb(var(--app-amber) / 0.08), transparent 45%),
     rgb(var(--app-bg));
 }
 

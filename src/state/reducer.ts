@@ -1,6 +1,7 @@
 import { applyFitToState } from "../lib/fitting/fitModels";
 import { DEFAULT_CORE, DEFAULT_PARAMS, SCENARIO_COLORS } from "../lib/models";
 import { readShareStateFromUrl } from "../lib/shareState";
+import { readStoredTheme } from "../lib/theme";
 import type { AppState, BassView, ChartMode, FitResult, LeftTab, ModelType, RightTab, Scenario, TableSortState, ThemeMode } from "../types";
 
 export type Action =
@@ -57,7 +58,7 @@ function defaultState(): AppState {
     tableSort: { key: "period", dir: "asc" },
     aboutCollapsed: false,
     toast: null,
-    theme: "dark"
+    theme: readStoredTheme() ?? "light"
   };
 }
 
@@ -242,7 +243,7 @@ export function reducer(state: AppState, action: Action): AppState {
       }
       return applyFitToState(state, state.fit.stagedFit);
     case "setTheme":
-      return { ...state, theme: "dark" };
+      return { ...state, theme: action.theme };
     default:
       return state;
   }

@@ -342,6 +342,6 @@ export function createSyntheticState(model: ModelType): AppState {
     tableSort: { key: "period", dir: "asc" },
     aboutCollapsed: false,
     toast: null,
-    theme: "dark"
+    theme: "light"
   };
 }
