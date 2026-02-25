@@ -20,6 +20,7 @@ import { PersistencyChart } from "./components/chart/PersistencyChart";
 import { HazardChart } from "./components/chart/HazardChart";
 import { MetricsPanel } from "./components/MetricsPanel";
 import { CohortPanel } from "./components/CohortPanel";
+import { ModelGuide } from "./components/ModelGuide";
 import { FitPanel } from "./components/FitPanel";
 import { ExportPanel } from "./components/ExportPanel";
 import { BenchmarkToggles, getEnabledBenchmarkSeries } from "./components/BenchmarkToggles";
@@ -334,6 +335,9 @@ export default function App() {
                   onSetNewStarts={(v) => dispatch({ type: "setCohortNewStarts", value: v })}
                   onSetSimMonths={(v) => dispatch({ type: "setCohortMonths", value: v })}
                 />
+
+                {/* Model Guide */}
+                <ModelGuide model={state.activeModel} />
               </div>
 
               {/* Right Sidebar */}

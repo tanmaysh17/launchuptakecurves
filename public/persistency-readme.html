@@ -1,0 +1,460 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Persistency Curve Designer - Readme</title>
+    <style>
+      body {
+        margin: 0;
+        font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
+        background: #0d1117;
+        color: #e6edf3;
+      }
+      .wrap {
+        max-width: 1000px;
+        margin: 0 auto;
+        padding: 28px 20px 48px;
+      }
+      h1, h2, h3 {
+        margin: 0 0 10px;
+      }
+      h1 {
+        font-size: 28px;
+      }
+      h2 {
+        margin-top: 30px;
+        font-size: 20px;
+      }
+      .card {
+        background: #161b22;
+        border: 1px solid #30363d;
+        border-radius: 10px;
+        padding: 14px 16px;
+        margin-top: 12px;
+      }
+      ul {
+        margin: 8px 0 0 20px;
+      }
+      li {
+        margin-bottom: 5px;
+      }
+      code {
+        background: #1a2332;
+        border-radius: 6px;
+        padding: 2px 6px;
+      }
+      a {
+        color: #00d4b4;
+      }
+      .muted {
+        color: #8b949e;
+      }
+      .formula {
+        background: #1a2332;
+        border: 1px solid #30363d;
+        border-radius: 6px;
+        padding: 8px 12px;
+        margin: 10px 0;
+        font-family: "IBM Plex Mono", "Courier New", monospace;
+        font-size: 13px;
+        color: #79c0ff;
+      }
+      .param-grid {
+        display: grid;
+        grid-template-columns: max-content 1fr;
+        gap: 4px 16px;
+        margin-top: 8px;
+      }
+      .param-label {
+        font-family: "IBM Plex Mono", "Courier New", monospace;
+        font-size: 12px;
+        color: #00d4b4;
+        white-space: nowrap;
+      }
+      .param-desc {
+        font-size: 13px;
+        color: #8b949e;
+      }
+      .badge {
+        display: inline-block;
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+        margin-right: 6px;
+      }
+      .badge-hazard-dec {
+        background: rgba(0, 212, 180, 0.15);
+        color: #00d4b4;
+      }
+      .badge-hazard-inc {
+        background: rgba(240, 165, 0, 0.15);
+        color: #f0a500;
+      }
+      .badge-hazard-const {
+        background: rgba(139, 148, 158, 0.15);
+        color: #8b949e;
+      }
+      .badge-hazard-mixed {
+        background: rgba(167, 139, 250, 0.15);
+        color: #a78bfa;
+      }
+      .section-rule {
+        border: none;
+        border-top: 1px solid #30363d;
+        margin: 24px 0 0;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 10px;
+        font-size: 13px;
+      }
+      th {
+        text-align: left;
+        border-bottom: 1px solid #30363d;
+        padding: 6px 10px;
+        font-weight: 600;
+        color: #8b949e;
+        text-transform: uppercase;
+        font-size: 11px;
+        letter-spacing: 0.06em;
+      }
+      td {
+        padding: 6px 10px;
+        border-bottom: 1px solid rgba(48, 54, 61, 0.5);
+        vertical-align: top;
+      }
+      tr:last-child td {
+        border-bottom: none;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <h1>Persistency Curve Designer - Readme</h1>
+      <p class="muted">
+        Interactive tool for modeling patient duration of therapy, fitting survival curves to Kaplan-Meier data, computing business metrics, and simulating cohort demand.
+      </p>
+
+      <h2>What This Tool Does</h2>
+      <div class="card">
+        <ul>
+          <li>Designs parametric and non-parametric survival curves for patient persistency modeling.</li>
+          <li>Computes Median DoT, Mean DoT, S(6), S(12), S(24), and annual vials per patient from the curve.</li>
+          <li>Fits curves to Kaplan-Meier or real-world persistency data via Nelder-Mead optimization.</li>
+          <li>Accepts quick target syntax (<code>M3=85%, M12=38%</code>) when full KM data is unavailable.</li>
+          <li>Simulates multi-cohort demand waterfall: total patients on drug over time under constant new-starts assumptions.</li>
+          <li>Renders instantaneous hazard alongside the survival curve for clinical interpretation.</li>
+          <li>Exports survival series, cohort data, and model parameters as CSV or JSON.</li>
+          <li>Includes industry benchmark overlays (IO monotherapy, oral TKI, CAR-T, chemotherapy).</li>
+          <li>Supports presets covering common oncology therapy archetypes for rapid scenario setup.</li>
+        </ul>
+      </div>
+
+      <h2>Survival Model Guide</h2>
+      <p class="muted" style="margin-top: 10px">
+        Each model makes different assumptions about how patients discontinue over time. Choosing the right model requires both statistical fit and clinical plausibility. The sections below describe when each model applies and what it predicts about patient behavior.
+      </p>
+
+      <!-- WEIBULL -->
+      <div class="card">
+        <h3>1) Weibull</h3>
+        <span class="badge badge-hazard-dec">Decreasing hazard if k &lt; 1</span>
+        <span class="badge badge-hazard-inc">Increasing hazard if k &gt; 1</span>
+        <span class="badge badge-hazard-const">Constant hazard if k = 1</span>
+        <div class="formula">S(t) = C * exp( -(t / lambda)^k )</div>
+        <p><strong>What it models.</strong> The Weibull is the most widely used parametric survival model in oncology HTA submissions. Its shape parameter <code>k</code> controls whether the risk of discontinuation rises, falls, or stays flat over time — making it flexible enough to approximate nearly any monotone hazard pattern. The ceiling <code>C</code> allows a fraction of patients to be assumed permanently persistent (analogous to a crude cure fraction), though the Mixture Cure model handles this more explicitly.</p>
+        <hr class="section-rule" />
+        <p><strong>Parameters.</strong></p>
+        <div class="param-grid">
+          <span class="param-label">lambda</span>
+          <span class="param-desc">Scale (characteristic life). The month at which S(t) = C * exp(-1) ~ 36.8% of ceiling. Larger values stretch the curve to the right — patients persist longer. For IO monotherapy, typical values are 8–15 months; for maintenance therapy, 18–36 months.</span>
+          <span class="param-label">k</span>
+          <span class="param-desc">Shape. Controls hazard direction. k = 0.7 is typical for immunotherapy (declining hazard as non-responders exit early). k = 1.5 is typical for maintenance therapy (hazard rises as tolerance and fatigue accumulate). k = 1.0 collapses to exponential.</span>
+          <span class="param-label">C (ceiling)</span>
+          <span class="param-desc">Maximum initial persistence (0–100%). Use 100 for an open population. Lower values model access or adherence barriers limiting who ever starts properly — for example, C = 85 if 15% of initiators discontinue before the first follow-up visit.</span>
+        </div>
+        <hr class="section-rule" />
+        <p><strong>When to use it.</strong> Use Weibull when:</p>
+        <ul>
+          <li>You need a standard parametric model acceptable in NICE or CADTH HTA submissions.</li>
+          <li>The hazard is monotone — clearly trending up or down over the observed period, not humped.</li>
+          <li>Fitting to KM data: Weibull is the default starting model before testing Log-Normal.</li>
+          <li>IO monotherapy (k &lt; 1): pembrolizumab NSCLC, nivolumab RCC — early dropout among non-responders, then a persistent tail.</li>
+          <li>Maintenance therapy (k &gt; 1): bevacizumab maintenance, olaparib, niraparib — increasing dropout as side-effect burden and patient fatigue accumulate.</li>
+        </ul>
+        <hr class="section-rule" />
+        <p><strong>Hazard behavior.</strong> The instantaneous discontinuation rate is <code>h(t) = (k / lambda) * (t / lambda)^(k-1)</code>. With k &lt; 1, h(t) is highest at treatment start and declines monotonically — this is the "early-exit survivor effect" seen in heterogeneous IO populations. With k &gt; 1, h(t) accelerates over time, consistent with cumulative toxicity or protocol fatigue. With k = 1, h(t) is constant and the model reduces to exponential.</p>
+        <hr class="section-rule" />
+        <p><strong>Industry examples.</strong> Weibull with k ~ 0.65–0.80 fits published KM curves for pembrolizumab first-line NSCLC, nivolumab melanoma OS, and atezolizumab urothelial. Weibull with k ~ 1.2–1.6 fits bevacizumab maintenance in ovarian cancer and enzalutamide mCRPC, where tolerability drives increasing dropout. NICE DSU TSD 14 and CADTH survival analysis guidelines cite Weibull as a primary candidate.</p>
+      </div>
+
+      <!-- EXPONENTIAL -->
+      <div class="card">
+        <h3>2) Exponential</h3>
+        <span class="badge badge-hazard-const">Constant hazard</span>
+        <div class="formula">S(t) = C * exp( -lambda * t )</div>
+        <p><strong>What it models.</strong> The exponential model assumes constant hazard — at every month, the probability of stopping is the same regardless of how long the patient has already been on therapy. This "memoryless" property is rarely realistic for oncology but provides a useful reference: it is the least informative parametric model and often serves as the benchmark against which more complex models are compared.</p>
+        <hr class="section-rule" />
+        <p><strong>Parameters.</strong></p>
+        <div class="param-grid">
+          <span class="param-label">lambda</span>
+          <span class="param-desc">Constant monthly hazard rate. A value of 0.10 means 10% of remaining patients discontinue each month. Median DoT = ln(2) / lambda. For a 7-month median, lambda ≈ 0.099.</span>
+          <span class="param-label">C (ceiling)</span>
+          <span class="param-desc">Initial persistence. Functions identically to the Weibull ceiling — a scalar that reduces the starting point of the curve below 100%.</span>
+        </div>
+        <hr class="section-rule" />
+        <p><strong>When to use it.</strong> Use Exponential when:</p>
+        <ul>
+          <li>You need a simple, defensible lower-bound assumption (constant dropout rate).</li>
+          <li>Modeling chemotherapy cycles where treatment is time-limited and the reason for stopping (cycle completion vs. toxicity) is roughly cycle-by-cycle.</li>
+          <li>Comparing model outputs: exponential is the special case of both Weibull (k = 1) and Log-Normal at particular parameter values.</li>
+          <li>Data are very sparse (fewer than four observed points) and more complex models would be overfit.</li>
+        </ul>
+        <hr class="section-rule" />
+        <p><strong>Hazard behavior.</strong> h(t) = lambda at all t. There is no time-dependence. The survival curve is a pure exponential decay and the hazard chart is a flat horizontal line. This is the easiest model to communicate to non-technical stakeholders but is almost always an oversimplification for real therapy.</p>
+        <hr class="section-rule" />
+        <p><strong>Industry examples.</strong> Short-course chemotherapy regimens (FOLFOX, FOLFIRI) that have a fixed maximum number of cycles approximate exponential persistence during the active cycle period. The model is sometimes used for anti-PD-1/L1 treatment when early data are limited and the analyst cannot distinguish k from 1.0 with confidence. In NICE submissions, exponential is frequently run as a sensitivity alongside Weibull and Log-Normal.</p>
+      </div>
+
+      <!-- LOG-NORMAL -->
+      <div class="card">
+        <h3>3) Log-Normal</h3>
+        <span class="badge badge-hazard-mixed">Increasing then decreasing hazard</span>
+        <div class="formula">S(t) = C * ( 1 - Phi( (ln(t) - ln(median)) / sigma ) )</div>
+        <p class="muted" style="margin-top: 4px; font-size: 12px">Phi = standard normal CDF. Approximated via Abramowitz and Stegun formula 26.2.17.</p>
+        <p style="margin-top: 10px"><strong>What it models.</strong> Log-Normal produces a humped hazard function: risk of discontinuation rises from zero, peaks at a finite time, then declines. This is clinically realistic for therapies where patients first tolerate treatment reasonably well, reach a period of peak dropout risk (toxicity accumulation, first assessment showing progression), and then only durable adherents remain. The median parameter is directly interpretable as the month at which 50% of patients have discontinued — making it intuitive for commercial teams.</p>
+        <hr class="section-rule" />
+        <p><strong>Parameters.</strong></p>
+        <div class="param-grid">
+          <span class="param-label">medianMonths</span>
+          <span class="param-desc">The month at which S(t) crosses 50% of ceiling. Directly maps to the clinical "median duration of therapy." For osimertinib FLAURA, this is approximately 14–18 months. For ibrutinib CLL first-line, 36–48 months. Set this first, before tuning sigma.</span>
+          <span class="param-label">sigma</span>
+          <span class="param-desc">Log-scale standard deviation. Controls tail heaviness. Low sigma (0.4–0.6) produces a tighter distribution: most patients stop around the median, few persist very long. High sigma (0.9–1.3) creates a longer tail: a meaningful fraction of patients persist well past the median. Oral TKIs typically fit sigma 0.6–0.9.</span>
+          <span class="param-label">C (ceiling)</span>
+          <span class="param-desc">Initial persistence fraction. Same interpretation as Weibull. Use C = 100 unless there is evidence of a structural early-discontinuation group.</span>
+        </div>
+        <hr class="section-rule" />
+        <p><strong>When to use it.</strong> Use Log-Normal when:</p>
+        <ul>
+          <li>Modeling oral targeted therapies (TKIs) taken daily at home — ibrutinib, osimertinib, alectinib, palbociclib, ribociclib.</li>
+          <li>The hazard chart shows a peak followed by a declining tail (visible in KM data via decreasing slope late in follow-up).</li>
+          <li>The median DoT is your primary commercial input and needs to be directly parameterized.</li>
+          <li>Comparing against Weibull in an HTA submission — NICE TSD 14 lists Log-Normal as a standard candidate alongside Weibull, exponential, log-logistic, and Gompertz.</li>
+        </ul>
+        <hr class="section-rule" />
+        <p><strong>Hazard behavior.</strong> h(t) starts at 0 when t = 0, rises to a peak at <code>t* = median * exp(-sigma^2)</code>, then declines asymptotically toward zero. The late-time declining hazard reflects survivor enrichment: the remaining population consists increasingly of adherent patients who have demonstrated they tolerate the therapy. This is a desirable clinical property for chronic oral oncology agents where initial tolerability sorting has occurred.</p>
+        <hr class="section-rule" />
+        <p><strong>Industry examples.</strong> Published real-world adherence analyses for oral TKIs in NSCLC consistently favor Log-Normal or log-logistic over Weibull in AIC/BIC comparisons. Osimertinib FLAURA2 KM data, ibrutinib RESONATE-2 PFS-as-proxy persistency, and palbociclib PALOMA-3 fit Log-Normal well. For HEOR models submitted to NICE for CDK4/6 inhibitors, Log-Normal is frequently the primary or sensitivity model for DoT.</p>
+      </div>
+
+      <!-- PIECEWISE LINEAR -->
+      <div class="card">
+        <h3>4) Piecewise Linear</h3>
+        <span class="badge badge-hazard-mixed">Segment-defined hazard</span>
+        <div class="formula">S(t) = linear interpolation between user-defined (month, survival%) knot points</div>
+        <p><strong>What it models.</strong> Piecewise linear imposes no distributional assumption. The analyst specifies a set of control points — pairs of (month, survival%) — and the curve connects them with straight line segments. This is the most transparent model for communicating assumptions to commercial teams: every number in the curve is something a forecaster explicitly set or validated against observed data.</p>
+        <hr class="section-rule" />
+        <p><strong>Parameters.</strong></p>
+        <div class="param-grid">
+          <span class="param-label">knots</span>
+          <span class="param-desc">A list of (month, survival%) pairs. The curve is entirely determined by these control points. The tool requires at least two knots. Add points at clinically important landmarks: start of therapy, first tumor assessment, planned treatment discontinuation date, end of trial follow-up. Survival values must be non-increasing from left to right.</span>
+        </div>
+        <p style="margin-top: 10px; color: #8b949e; font-size: 13px">Example knot set for adjuvant therapy (12-month planned course): (0, 100) → (3, 95) → (6, 80) → (9, 60) → (12, 40) → (18, 15) → (24, 5).</p>
+        <hr class="section-rule" />
+        <p><strong>When to use it.</strong> Use Piecewise Linear when:</p>
+        <ul>
+          <li>Modeling fixed-duration regimens with a planned treatment end: adjuvant chemotherapy, induction regimens, CAR-T with fixed observation window.</li>
+          <li>A parametric model fails to converge or produces clinically implausible extrapolation beyond observed data.</li>
+          <li>Protocol-defined stopping rules dominate the dropout pattern (for example: stop at 12 cycles, stop at disease progression at scheduled assessment).</li>
+          <li>Directly encoding outputs from a commercial or clinical excel model where survival percentages at specific months are known inputs.</li>
+          <li>Communicating assumptions to market access teams who need to trace every number directly — no hidden distributional assumptions.</li>
+        </ul>
+        <hr class="section-rule" />
+        <p><strong>Hazard behavior.</strong> The hazard within each segment is constant (proportional to the slope of the segment in the survival curve). Between knots, h(t) = -delta_S / (S_prev * delta_t). Hazard can vary freely across segments. A steep drop followed by a flat section produces high then low hazard. This flexibility is both a strength (can match any shape) and a limitation: the hazard is discontinuous at knots, which is rarely realistic biologically, but usually acceptable for planning purposes.</p>
+        <hr class="section-rule" />
+        <p><strong>Industry examples.</strong> Adjuvant chemotherapy in early breast cancer (AC-T, TC regimens) with 4–8 planned cycles. Adjuvant targeted therapy in resected NSCLC (osimertinib ADAURA) where the treatment was planned for 3 years and dropout reflects patient choice and tolerability rather than disease progression. Induction therapies in AML (7+3) where the regimen is inherently time-boxed. Analysts frequently use piecewise as a conservative fallback when KM data only cover 12–18 months and parametric extrapolation beyond observed data is contested in HTA.</p>
+      </div>
+
+      <!-- MIXTURE CURE -->
+      <div class="card">
+        <h3>5) Mixture Cure</h3>
+        <span class="badge badge-hazard-dec">Declining hazard approaching zero</span>
+        <div class="formula">S(t) = pi + (1 - pi) * exp( -(t / lambda)^k )</div>
+        <p class="muted" style="margin-top: 4px; font-size: 12px">pi = cure fraction; the Weibull term governs uncured patients only. At t → infinity, S(t) → pi.</p>
+        <p style="margin-top: 10px"><strong>What it models.</strong> The Mixture Cure model partitions the patient population into two groups: a fraction <code>pi</code> who are considered "cured" (or achieve such durable response that they effectively never discontinue within a planning horizon) and a fraction <code>(1 - pi)</code> whose time on therapy follows a standard Weibull distribution. The survival curve has a non-zero asymptote: it flattens at <code>pi * 100%</code> rather than approaching zero. This plateau is the defining clinical feature of therapies that produce long-term complete responses in a fraction of patients.</p>
+        <hr class="section-rule" />
+        <p><strong>Parameters.</strong></p>
+        <div class="param-grid">
+          <span class="param-label">pi</span>
+          <span class="param-desc">Cure fraction (0.0–1.0). The proportion of patients assumed to have durable response and never discontinue. For CAR-T in DLBCL (axi-cel ZUMA-1, tisa-cel JULIET), durable CR rates at 24 months are approximately 30–40%, suggesting pi in the 0.30–0.40 range. For IO responders in melanoma, long-term OS plateaus suggest a functional cure fraction of 20–25%.</span>
+          <span class="param-label">lambda</span>
+          <span class="param-desc">Weibull scale for the uncured fraction. Controls how quickly non-responders discontinue. Lower values mean the non-responders drop off quickly, creating a fast initial decline followed by the cure plateau. Typical range: 3–12 months for CAR-T.</span>
+          <span class="param-label">k</span>
+          <span class="param-desc">Weibull shape for the uncured fraction. k slightly above 1 (1.0–1.3) implies that non-responders who persist past early assessment drop off at a mildly increasing rate — consistent with progressive disease eventually forcing discontinuation. k below 1 implies early-rapid exit of the least responsive patients.</span>
+        </div>
+        <hr class="section-rule" />
+        <p><strong>When to use it.</strong> Use Mixture Cure when:</p>
+        <ul>
+          <li>The KM survival curve shows a clear plateau above zero that persists across multiple follow-up timepoints.</li>
+          <li>Modeling CAR-T cell therapy: axi-cel (Yescarta) in DLBCL, tisa-cel (Kymriah) in ALL, liso-cel (Breyanzi) in DLBCL.</li>
+          <li>Long-term IO responders in melanoma, MSI-H colorectal, or first-line NSCLC where 5-year plateau data exist.</li>
+          <li>Any therapy where a biologically distinct subpopulation (complete responders, MRD-negative patients) has fundamentally different persistence dynamics from the remainder.</li>
+          <li>HTA submissions that need to demonstrate long-term value: cure fraction justifies extended benefit in cost-effectiveness models.</li>
+        </ul>
+        <hr class="section-rule" />
+        <p><strong>Hazard behavior.</strong> The instantaneous hazard approaches zero as t increases, because the surviving population is progressively enriched with cured patients who have zero (or near-zero) hazard. Early in the curve, hazard is dominated by the Weibull term for uncured patients. The hazard chart shows a declining curve that asymptotes toward zero rather than flattening to a positive constant. This is clinically interpretable: once you are past the early observation period, the remaining patients are increasingly those with durable response.</p>
+        <hr class="section-rule" />
+        <p><strong>Industry examples.</strong> ZUMA-1 long-term follow-up (axi-cel, DLBCL) shows approximately 35% of patients alive and progression-free at 5 years, consistent with a cure fraction of 0.30–0.40. JULIET (tisa-cel) and TRANSCEND (liso-cel) show similar plateau patterns. Pembrolizumab in MSI-H/dMMR colorectal (KEYNOTE-158) and first-line metastatic melanoma (KEYNOTE-006) long-term data show functional plateaus at 20–30% of the initial population that drive Mixture Cure model selection in NICE submissions.</p>
+      </div>
+
+      <h2>Business Metrics Explained</h2>
+      <div class="card">
+        <table>
+          <thead>
+            <tr>
+              <th>Metric</th>
+              <th>Definition</th>
+              <th>Commercial Use</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>Median DoT</code></td>
+              <td>Month where S(t) crosses 50%. Interpolated linearly between monthly points. "NR" if the curve never reaches 50% within the horizon.</td>
+              <td>Primary persistence assumption in market access dossiers. Reported in KOL interviews, TPP slides, and payer submissions.</td>
+            </tr>
+            <tr>
+              <td><code>Mean DoT</code></td>
+              <td>Area under the survival curve (trapezoidal integration), divided by 100 to convert from %-months to months. Equals the average time a patient spends on therapy.</td>
+              <td>Revenue driver. Mean DoT × revenue per unit-month × patients starting = annual revenue per cohort. More stable than median for long-tailed distributions.</td>
+            </tr>
+            <tr>
+              <td><code>S(6), S(12), S(24)</code></td>
+              <td>Survival percentage at 6, 12, and 24 months. Interpolated from the curve. These are the persistence rates at landmark timepoints.</td>
+              <td>Used in payer contracting (outcomes-based contracts), product launch tracking KPIs, and analog benchmarking. S(12) is the most commonly cited single metric in oncology access discussions.</td>
+            </tr>
+            <tr>
+              <td><code>Annual Vials</code></td>
+              <td>Mean DoT (months) × monthly doses per patient × 12 / horizon_months. Estimates the average annual product consumption per patient starting therapy.</td>
+              <td>Demand planning, procurement forecasting, and gross-to-net revenue modeling. Multiply by new patients per year × price per vial for a revenue estimate.</td>
+            </tr>
+          </tbody>
+        </table>
+        <p class="muted" style="margin-top: 12px; font-size: 13px">
+          For Mixture Cure models with a plateau, Median DoT may be "NR" (not reached) within the horizon if pi is large. In this case, Mean DoT is the more actionable metric and may substantially exceed the horizon length. This is intentional: it reflects the long-term value of durable responders.
+        </p>
+      </div>
+
+      <h2>Fitting Best Practices</h2>
+      <div class="card">
+        <h3>Preparing KM Data</h3>
+        <ul>
+          <li>Input format: two columns, <code>month,survival%</code>. Header row is optional and auto-detected.</li>
+          <li>Survival values must be in [0, 100], not [0, 1]. A value of <code>0.65</code> will be interpreted as 0.65%, not 65%.</li>
+          <li>Data must be monotonically non-increasing (survival cannot rise between observations). The tool warns but does not block non-monotone input.</li>
+          <li>Include at least 6–8 timepoints for stable fitting. Fewer than 4 points produces unreliable parameter estimates.</li>
+          <li>Include the first observation as close to t = 0 as possible. Starting at t = 3 or later causes the optimizer to underfit early dropout.</li>
+          <li>Digitized KM curves (using tools like WebPlotDigitizer) work well. Round to the nearest 0.5–1% for survival values.</li>
+        </ul>
+        <h3 style="margin-top: 16px">Quick Targets Syntax</h3>
+        <ul>
+          <li>Use Quick Targets when you have clinical input or analog benchmarks but not a full KM dataset.</li>
+          <li>Format: <code>M3=85%, M6=65%, M12=38%, M24=12%</code> — month and survival percentage pairs, comma-separated.</li>
+          <li>Accepted patterns: <code>M6=65%</code>, <code>M6=65</code>, <code>6=65%</code>, <code>M6:65</code>, <code>M6 at 65%</code>.</li>
+          <li>Provide at least four targets spanning early, mid, and late timepoints to constrain both shape and scale parameters.</li>
+          <li>Quick Targets fitting uses the same Nelder-Mead optimizer as full KM fitting but with fewer degrees of freedom in the data.</li>
+        </ul>
+        <h3 style="margin-top: 16px">When Fitting Fails or Produces Poor Results</h3>
+        <ul>
+          <li>R² below 0.90 suggests the model family is a poor match for the data shape. Try a different model.</li>
+          <li>If all parametric models show poor fit (R² &lt; 0.85 for all four), use Piecewise Linear and manually set knots at observed data points.</li>
+          <li>Mixture Cure fitting requires a visible plateau in the data. If all four observed survival points are still declining at the last timepoint, the optimizer may not converge to a meaningful cure fraction.</li>
+          <li>Log-Normal fitting is sensitive to the first few datapoints. If early observations are noisy or missing, constrain sigma manually before fitting.</li>
+          <li>The R² displayed is a coefficient of determination against the input KM points, not a proper likelihood-based statistic. It is a proxy for fit quality. For formal model selection, use AIC/BIC in a statistical package (R <code>flexsurv</code>, Stata <code>streg</code>).</li>
+        </ul>
+      </div>
+
+      <h2>Cohort Simulation Explained</h2>
+      <div class="card">
+        <h3>What the Waterfall Shows</h3>
+        <p>The cohort simulation stacks monthly patient cohorts. Each month, a fixed number of new patients start therapy. Each cohort's persistence over time is governed by the current survival curve. Total patients on drug at any given month is the sum of all cohorts still active at that month.</p>
+        <ul>
+          <li><strong>Waterfall chart:</strong> stacked bars where each color segment represents one monthly starting cohort. The total bar height = total patients on drug that month.</li>
+          <li><strong>Peak on-drug:</strong> the highest total patients on drug across all simulated months. Occurs before steady state in growing markets; occurs near month 1 in stable or declining markets.</li>
+          <li><strong>Steady-state:</strong> when total on-drug patients stabilizes (roughly: new starts per month = discontinuations per month). Steady-state total on drug ≈ new starts per month × mean DoT.</li>
+        </ul>
+        <h3 style="margin-top: 16px">Steady-State Formula</h3>
+        <p>Under constant new starts, the long-run equilibrium is:</p>
+        <div class="formula">Steady-state patients = new starts per month * mean DoT (months)</div>
+        <p class="muted" style="font-size: 13px">This follows directly from Little's Law (queueing theory). If mean DoT is 8 months and 100 patients start each month, steady-state is approximately 800 patients on drug. Use this as a quick sanity check for the waterfall output.</p>
+        <h3 style="margin-top: 16px">Demand Planning Applications</h3>
+        <ul>
+          <li>Set new starts per month from a market model (patients × share × conversion rate / 12).</li>
+          <li>Multiply total on-drug by monthly doses per patient to derive monthly drug consumption.</li>
+          <li>Model ramp-up: run with increasing new starts using the quick targets approach to encode a share ramp assumption.</li>
+          <li>Discontinuations column in the table = patients needing replacement therapy or next line of treatment — useful for LOT2 demand estimation.</li>
+        </ul>
+      </div>
+
+      <h2>Industry Best Practices</h2>
+      <div class="card">
+        <h3>HTA Submission Norms</h3>
+        <ul>
+          <li><strong>NICE DSU TSD 14</strong> recommends fitting all standard parametric families (exponential, Weibull, log-logistic, log-normal, Gompertz, generalized Gamma) and selecting based on AIC/BIC plus clinical plausibility review. Weibull and Log-Normal are the most frequently accepted primary models in NICE appraisals.</li>
+          <li><strong>CADTH</strong> (Canada) follows similar guidance. Reports must include survival plots for all fitted models overlaid on KM data, with written clinical justification for model selection.</li>
+          <li><strong>Model selection rule of thumb:</strong> if two models are within 2 AIC units of the best model, select based on clinical interpretability. If the best-fitting model predicts clinically implausible long-term behavior (for example, 70% of patients still on therapy at 10 years for a chemotherapy regimen), reject it regardless of AIC.</li>
+          <li>Always extrapolate cautiously beyond the observed KM follow-up period. Label any model output beyond the last KM observation as extrapolated and subject to sensitivity analysis.</li>
+        </ul>
+        <h3 style="margin-top: 16px">Model Selection in Practice</h3>
+        <ul>
+          <li>Start with Weibull — it is the most defensible single choice and fits a wide range of oncology curves.</li>
+          <li>If Weibull fits poorly (R² &lt; 0.92) or the hazard chart shows a clear hump, try Log-Normal.</li>
+          <li>If the KM data shows a plateau above zero that persists across multiple follow-up timepoints (especially for immunotherapy or cell therapy), use Mixture Cure.</li>
+          <li>Use Piecewise as the primary model only when the therapy has a protocol-defined duration and parametric extrapolation beyond observed data is not needed.</li>
+          <li>Present two models (primary and sensitivity) in commercial deliverables. Never rely on a single persistence curve for revenue forecasts.</li>
+        </ul>
+        <h3 style="margin-top: 16px">Common Pitfalls</h3>
+        <ul>
+          <li><strong>Overfitting with Mixture Cure:</strong> if fewer than 24 months of follow-up are available, the cure fraction parameter is poorly identified and the optimizer may produce pi values that are numerically plausible but clinically unsupported. Require clinical or external validation for any pi &gt; 0.4 without mature long-term data.</li>
+          <li><strong>Extrapolation beyond observed data:</strong> parametric models make strong assumptions about the tail. A Weibull fit to 12 months of data that predicts 40% survival at 60 months should be stress-tested. Check the hazard plot: is the extrapolated hazard clinically sensible for the therapy type?</li>
+          <li><strong>Ignoring the ceiling parameter:</strong> if real-world data suggests that a meaningful fraction of patients never properly initiate therapy (early discontinuation before first dose delivery or within 30 days), the initial value of S(0) is not 100%. Model this with ceiling &lt; 100 rather than adjusting the slope parameter.</li>
+          <li><strong>Conflating persistence metrics:</strong> see the definitions below. Commercial forecasts should specify which definition is being modeled.</li>
+        </ul>
+        <h3 style="margin-top: 16px">Persistency vs Adherence vs Compliance</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>Term</th>
+              <th>Definition</th>
+              <th>What This Tool Models</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>Persistency</strong></td>
+              <td>Whether a patient continues to fill/receive the therapy at all. Binary: still on drug or not. Time from first prescription to last prescription.</td>
+              <td>Yes. The survival curve directly models the probability of still being on therapy at time t.</td>
+            </tr>
+            <tr>
+              <td><strong>Adherence</strong></td>
+              <td>Among persistent patients, the proportion of prescribed doses actually taken. Measured as MPR (medication possession ratio) or PDC (proportion of days covered).</td>
+              <td>Not directly. Incorporate adherence via the monthly dose parameter: if adherence is 80%, set monthly doses = 0.8 × prescribed monthly doses.</td>
+            </tr>
+            <tr>
+              <td><strong>Compliance</strong></td>
+              <td>Correct use per instructions (dose, timing, route). Overlaps with adherence in common usage.</td>
+              <td>Not modeled. Address in clinical input assumptions outside this tool.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p style="margin-top: 28px"><a href="./persistency.html">Back to tool</a></p>
+    </div>
+  </body>
+</html>
