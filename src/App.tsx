@@ -11,6 +11,7 @@ import { MilestonesPanel } from "./components/MilestonesPanel";
 import { ModelAbout } from "./components/ModelAbout";
 import { TablePanel } from "./components/table/TablePanel";
 import { PillTabs } from "./components/ui/PillTabs";
+import { AppNav } from "./components/ui/AppNav";
 import { BrandLogo } from "./components/ui/BrandLogo";
 import { Toast } from "./components/ui/Toast";
 import { parseObservedCsv } from "./lib/csv";
@@ -267,19 +268,11 @@ export default function App() {
   return (
     <div className="app-shell min-h-screen bg-app-bg text-app-text" data-theme={state.theme}>
       <div className="mx-auto max-w-[1600px] p-4 md:p-5">
-        <div className="mb-4 flex items-end justify-between gap-3">
-          <div>
-            <BrandLogo />
-            <p className="text-sm text-app-muted">Interactive adoption forecasting with curve fitting, scenarios, and export-ready outputs.</p>
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={toggleTheme}
-              className="rounded border border-app-border px-3 py-1.5 font-chrome text-[11px] uppercase tracking-[0.08em] text-app-text hover:border-app-accent hover:text-app-accent"
-              title={state.theme === "light" ? "Switch to dark mode" : "Switch to light mode"}
-            >
-              {state.theme === "light" ? "Dark" : "Light"}
-            </button>
+        <AppNav
+          active="uptake"
+          theme={state.theme}
+          onToggleTheme={toggleTheme}
+          rightActions={
             <a
               href="./readme.html"
               target="_blank"
@@ -288,7 +281,11 @@ export default function App() {
             >
               Readme
             </a>
-          </div>
+          }
+        />
+        <div className="mb-4 flex items-center gap-3">
+          <BrandLogo />
+          <p className="text-sm text-app-muted">Interactive adoption forecasting with curve fitting, scenarios, and export-ready outputs.</p>
         </div>
 
         <div className="grid gap-4 md:grid-cols-[minmax(320px,30%)_minmax(0,70%)]">
