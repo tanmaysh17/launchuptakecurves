@@ -1,8 +1,9 @@
 import { applyFitToState } from "../lib/fitting/fitModels";
 import { DEFAULT_CORE, DEFAULT_PARAMS, SCENARIO_COLORS } from "../lib/models";
+import { loadAutoSavedState } from "../lib/sessions";
 import { readShareStateFromUrl } from "../lib/shareState";
 import { readStoredTheme } from "../lib/theme";
-import type { AppState, BassView, ChartMode, FitResult, LeftTab, ModelType, RightTab, Scenario, TableSortState, TargetPoint, ThemeMode } from "../types";
+import type { AppState, BassView, ChartMode, FitResult, LeftTab, ModelType, RightTab, Scenario, ShareableState, TableSortState, TargetPoint, ThemeMode } from "../types";
 
 export type Action =
   | { type: "setActiveModel"; model: ModelType }
@@ -30,7 +31,8 @@ export type Action =
   | { type: "applyStagedFit" }
   | { type: "setTheme"; theme: ThemeMode }
   | { type: "setTargetInput"; value: string }
-  | { type: "setTargets"; targets: TargetPoint[] };
+  | { type: "setTargets"; targets: TargetPoint[] }
+  | { type: "loadSession"; session: ShareableState };
 
 function defaultState(): AppState {
   return {
@@ -85,34 +87,34 @@ function snapshotScenario(state: AppState, color: string, index: number): Scenar
   };
 }
 
-function hydratedState(): AppState {
-  const base = defaultState();
-  const shared = readShareStateFromUrl();
-  if (!shared) {
-    return base;
-  }
+function mergeShared(base: AppState, source: Partial<ShareableState>): AppState {
   return {
     ...base,
-    activeModel: shared.activeModel ?? base.activeModel,
-    core: {
-      ...base.core,
-      ...shared.core
-    },
+    activeModel: source.activeModel ?? base.activeModel,
+    core: { ...base.core, ...source.core },
     params: {
-      logistic: { ...base.params.logistic, ...shared.params.logistic },
-      gompertz: { ...base.params.gompertz, ...shared.params.gompertz },
-      richards: { ...base.params.richards, ...shared.params.richards },
-      bass: { ...base.params.bass, ...shared.params.bass },
-      linear: { ...base.params.linear, ...shared.params.linear }
+      logistic: { ...base.params.logistic, ...source.params?.logistic },
+      gompertz: { ...base.params.gompertz, ...source.params?.gompertz },
+      richards: { ...base.params.richards, ...source.params?.richards },
+      bass: { ...base.params.bass, ...source.params?.bass },
+      linear: { ...base.params.linear, ...source.params?.linear }
     },
-    rightTab: shared.rightTab ?? base.rightTab,
-    leftTab: shared.leftTab ?? base.leftTab,
-    chartMode: shared.chartMode ?? base.chartMode,
-    bassView: shared.bassView ?? base.bassView,
-    scenarios: Array.isArray(shared.scenarios) ? shared.scenarios.slice(0, 4) : base.scenarios,
-    editingScenarioId: shared.editingScenarioId ?? null,
+    rightTab: source.rightTab ?? base.rightTab,
+    leftTab: source.leftTab ?? base.leftTab,
+    chartMode: source.chartMode ?? base.chartMode,
+    bassView: source.bassView ?? base.bassView,
+    scenarios: Array.isArray(source.scenarios) ? source.scenarios.slice(0, 4) : base.scenarios,
+    editingScenarioId: source.editingScenarioId ?? null,
     theme: base.theme
   };
+}
+
+function hydratedState(): AppState {
+  const base = defaultState();
+  // URL state takes priority, then localStorage, then defaults
+  const source = readShareStateFromUrl() ?? loadAutoSavedState();
+  if (!source) return base;
+  return mergeShared(base, source);
 }
 
 export const initialAppState = hydratedState();
@@ -252,6 +254,8 @@ export function reducer(state: AppState, action: Action): AppState {
       return { ...state, fit: { ...state.fit, targetInput: action.value } };
     case "setTargets":
       return { ...state, fit: { ...state.fit, targets: action.targets } };
+    case "loadSession":
+      return mergeShared(state, action.session);
     default:
       return state;
   }

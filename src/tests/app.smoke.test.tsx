@@ -17,7 +17,7 @@ describe("app smoke", () => {
     await user.click(screen.getByRole("button", { name: /Table/i }));
     expect(screen.getByRole("button", { name: /Export CSV/i })).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /^Chart$/i }));
-    expect(screen.getByRole("button", { name: /Share/i })).toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: /Share/i }).length).toBeGreaterThan(0);
   });
 
   it("adds and renames a scenario", async () => {

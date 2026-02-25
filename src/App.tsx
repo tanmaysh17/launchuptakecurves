@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useReducer } from "react";
+import { useEffect, useMemo, useReducer, useRef } from "react";
 import { toBlob } from "html-to-image";
 import { ChartPanel } from "./components/chart/ChartPanel";
 import { CoreParameters } from "./components/controls/CoreParameters";
@@ -9,6 +9,7 @@ import { ScenarioControls } from "./components/controls/ScenarioControls";
 import { FitPanel } from "./components/fit/FitPanel";
 import { MilestonesPanel } from "./components/MilestonesPanel";
 import { ModelAbout } from "./components/ModelAbout";
+import { SessionManager } from "./components/SessionManager";
 import { TablePanel } from "./components/table/TablePanel";
 import { PillTabs } from "./components/ui/PillTabs";
 import { AppNav } from "./components/ui/AppNav";
@@ -18,6 +19,7 @@ import { parseObservedCsv } from "./lib/csv";
 import { bestFitResult, fitComparableModels } from "./lib/fitting/fitModels";
 import { deriveMilestones } from "./lib/milestones";
 import { computeScenarioSeries, computeSeries, MODEL_LABELS } from "./lib/models";
+import { autoSaveState } from "./lib/sessions";
 import { readShareStateFromUrl, toShareableState, writeShareStateToUrl } from "./lib/shareState";
 import { applyTheme, persistTheme } from "./lib/theme";
 import { initialAppState, reducer } from "./state/reducer";
@@ -160,6 +162,16 @@ export default function App() {
     persistTheme(state.theme);
   }, [state.theme]);
 
+  // Auto-save state to localStorage for cross-navigation persistence
+  const saveTimer = useRef<number | null>(null);
+  useEffect(() => {
+    if (saveTimer.current) window.clearTimeout(saveTimer.current);
+    saveTimer.current = window.setTimeout(() => {
+      autoSaveState(toShareableState(state));
+    }, 400);
+    return () => { if (saveTimer.current) window.clearTimeout(saveTimer.current); };
+  }, [state.activeModel, state.core, state.params, state.scenarios, state.editingScenarioId, state.chartMode, state.bassView, state.rightTab, state.leftTab]);
+
   const toggleTheme = () => {
     const next: ThemeMode = state.theme === "light" ? "dark" : "light";
     dispatch({ type: "setTheme", theme: next });
@@ -273,14 +285,21 @@ export default function App() {
           theme={state.theme}
           onToggleTheme={toggleTheme}
           rightActions={
-            <a
-              href="./readme.html"
-              target="_blank"
-              rel="noreferrer"
-              className="rounded border border-app-border px-3 py-1.5 font-chrome text-[11px] uppercase tracking-[0.08em] text-app-text hover:border-app-accent hover:text-app-accent"
-            >
-              Readme
-            </a>
+            <div className="flex items-center gap-2">
+              <SessionManager
+                state={toShareableState(state)}
+                onLoadSession={(session) => dispatch({ type: "loadSession", session })}
+                onToast={(msg) => dispatch({ type: "setToast", value: msg })}
+              />
+              <a
+                href="./readme.html"
+                target="_blank"
+                rel="noreferrer"
+                className="rounded border border-app-border px-3 py-1.5 font-chrome text-[11px] uppercase tracking-[0.08em] text-app-text hover:border-app-accent hover:text-app-accent"
+              >
+                Readme
+              </a>
+            </div>
           }
         />
         <div className="mb-4 flex items-center gap-3">

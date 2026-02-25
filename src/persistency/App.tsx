@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useReducer } from "react";
+import { useEffect, useMemo, useReducer, useRef } from "react";
 import { AppNav } from "../components/ui/AppNav";
 import { PillTabs } from "../components/ui/PillTabs";
 import { Toast } from "../components/ui/Toast";
@@ -10,21 +10,25 @@ import { computeSeries } from "./lib/curves";
 import { computeMetrics } from "./lib/metrics";
 import { simulateCohort } from "./lib/cohort";
 import { fitAllModelsAsMap, bestFitFromMap, parseKMData, targetsToKMData } from "./lib/fitting";
+import { autoSaveState, readShareStateFromUrl } from "./lib/sessions";
 import { PresetSelector } from "./components/controls/PresetSelector";
 import { WeibullControls } from "./components/controls/WeibullControls";
 import { ExponentialControls } from "./components/controls/ExponentialControls";
 import { LogNormalControls } from "./components/controls/LogNormalControls";
 import { PiecewiseControls } from "./components/controls/PiecewiseControls";
 import { MixtureCureControls } from "./components/controls/MixtureCureControls";
-import { PersistencyChart } from "./components/chart/PersistencyChart";
+import { PersistencyScenarioControls } from "./components/controls/PersistencyScenarioControls";
+import { PersistencyChart, type ScenarioChartSeries } from "./components/chart/PersistencyChart";
 import { HazardChart } from "./components/chart/HazardChart";
 import { MetricsPanel } from "./components/MetricsPanel";
 import { CohortPanel } from "./components/CohortPanel";
 import { ModelGuide } from "./components/ModelGuide";
 import { FitPanel } from "./components/FitPanel";
 import { ExportPanel } from "./components/ExportPanel";
+import { SessionManager } from "./components/SessionManager";
 import { BenchmarkToggles, getEnabledBenchmarkSeries } from "./components/BenchmarkToggles";
-import type { CurveModel, LeftTab, ThemeMode, CohortMonth, FittableCurveModel } from "./types";
+import { PersistencyBrandLogo } from "./components/ui/PersistencyBrandLogo";
+import type { CurveModel, LeftTab, ThemeMode, CohortMonth, FittableCurveModel, ShareablePersistencyState } from "./types";
 
 const MODEL_TABS: { key: CurveModel; label: string }[] = [
   { key: "weibull", label: "Weibull" },
@@ -41,8 +45,42 @@ const MODEL_LABELS: Record<FittableCurveModel, string> = {
   mixtureCure: "Mixture Cure"
 };
 
+function toShareable(state: typeof initialState): ShareablePersistencyState {
+  return {
+    activeModel: state.activeModel,
+    params: state.params,
+    horizon: state.horizon,
+    chartView: state.chartView,
+    theme: state.theme,
+    scenarios: state.scenarios,
+    editingScenarioId: state.editingScenarioId,
+    benchmarks: state.benchmarks,
+    cohortNewStarts: state.cohortNewStarts,
+    cohortMonths: state.cohortMonths,
+    monthlyDose: state.monthlyDose,
+  };
+}
+
 export default function App() {
   const [state, dispatch] = useReducer(reducer, initialState);
+
+  // Hydrate from URL on first load
+  useEffect(() => {
+    const shared = readShareStateFromUrl();
+    if (shared) {
+      dispatch({ type: "loadSession", session: shared });
+    }
+  }, []);
+
+  // Auto-save to localStorage on meaningful state changes (debounced)
+  const saveTimer = useRef<number | null>(null);
+  useEffect(() => {
+    if (saveTimer.current) window.clearTimeout(saveTimer.current);
+    saveTimer.current = window.setTimeout(() => {
+      autoSaveState(toShareable(state));
+    }, 400);
+    return () => { if (saveTimer.current) window.clearTimeout(saveTimer.current); };
+  }, [state.activeModel, state.params, state.horizon, state.chartView, state.scenarios, state.editingScenarioId, state.benchmarks, state.cohortNewStarts, state.cohortMonths, state.monthlyDose]);
 
   const series = useMemo(
     () => computeSeries(state.activeModel, state.params, state.horizon),
@@ -57,6 +95,37 @@ export default function App() {
   const benchmarkSeries = useMemo(
     () => getEnabledBenchmarkSeries(state.benchmarks, state.horizon),
     [state.benchmarks, state.horizon]
+  );
+
+  // Compute scenario series for chart overlay
+  const scenarioSeries = useMemo<ScenarioChartSeries[]>(() => {
+    return state.scenarios.map((sc) => {
+      // Build a temporary params object with the scenario's snapshot
+      const tempParams = { ...state.params };
+      switch (sc.model) {
+        case "weibull": tempParams.weibull = sc.paramsSnapshot as typeof tempParams.weibull; break;
+        case "exponential": tempParams.exponential = sc.paramsSnapshot as typeof tempParams.exponential; break;
+        case "logNormal": tempParams.logNormal = sc.paramsSnapshot as typeof tempParams.logNormal; break;
+        case "piecewise": tempParams.piecewise = sc.paramsSnapshot as typeof tempParams.piecewise; break;
+        case "mixtureCure": tempParams.mixtureCure = sc.paramsSnapshot as typeof tempParams.mixtureCure; break;
+      }
+      return {
+        id: sc.id,
+        name: sc.name,
+        color: sc.color,
+        series: computeSeries(sc.model, tempParams, state.horizon),
+      };
+    });
+  }, [state.scenarios, state.params, state.horizon]);
+
+  // Compute metrics for each scenario (for the comparison table)
+  const scenarioMetrics = useMemo(
+    () => scenarioSeries.map((sc) => ({
+      name: sc.name,
+      color: sc.color,
+      metrics: computeMetrics(sc.series, state.monthlyDose),
+    })),
+    [scenarioSeries, state.monthlyDose]
   );
 
   const cohortData = useMemo<CohortMonth[]>(
@@ -151,41 +220,54 @@ export default function App() {
     }, 10);
   };
 
+  // When editing a scenario, parameter changes should update the scenario snapshot
+  const editingScenario = state.scenarios.find((s) => s.id === state.editingScenarioId) ?? null;
+
   const renderModelControls = () => {
     switch (state.activeModel) {
       case "weibull":
         return (
           <WeibullControls
             params={state.params.weibull}
-            onChange={(key, value) => dispatch({ type: "setWeibullParam", key, value })}
+            onChange={(key, value) => {
+              dispatch({ type: "setWeibullParam", key, value });
+            }}
           />
         );
       case "exponential":
         return (
           <ExponentialControls
             params={state.params.exponential}
-            onChange={(key, value) => dispatch({ type: "setExponentialParam", key, value })}
+            onChange={(key, value) => {
+              dispatch({ type: "setExponentialParam", key, value });
+            }}
           />
         );
       case "logNormal":
         return (
           <LogNormalControls
             params={state.params.logNormal}
-            onChange={(key, value) => dispatch({ type: "setLogNormalParam", key, value })}
+            onChange={(key, value) => {
+              dispatch({ type: "setLogNormalParam", key, value });
+            }}
           />
         );
       case "piecewise":
         return (
           <PiecewiseControls
             knots={state.params.piecewise.knots}
-            onChange={(knots) => dispatch({ type: "setPiecewiseKnots", knots })}
+            onChange={(knots) => {
+              dispatch({ type: "setPiecewiseKnots", knots });
+            }}
           />
         );
       case "mixtureCure":
         return (
           <MixtureCureControls
             params={state.params.mixtureCure}
-            onChange={(key, value) => dispatch({ type: "setMixtureCureParam", key, value })}
+            onChange={(key, value) => {
+              dispatch({ type: "setMixtureCureParam", key, value });
+            }}
           />
         );
     }
@@ -200,15 +282,23 @@ export default function App() {
           theme={state.theme}
           onToggleTheme={toggleTheme}
           rightActions={
-            <button
-              onClick={() => dispatch({ type: "setExportOpen", value: true })}
-              className="rounded border border-app-border px-3 py-1.5 font-chrome text-[11px] uppercase tracking-[0.08em] text-app-text hover:border-app-accent hover:text-app-accent"
-            >
-              Export
-            </button>
+            <div className="flex items-center gap-2">
+              <SessionManager
+                state={toShareable(state)}
+                onLoadSession={(session) => dispatch({ type: "loadSession", session })}
+                onToast={(msg) => dispatch({ type: "setToast", value: msg })}
+              />
+              <button
+                onClick={() => dispatch({ type: "setExportOpen", value: true })}
+                className="rounded border border-app-border px-3 py-1.5 font-chrome text-[11px] uppercase tracking-[0.08em] text-app-text hover:border-app-accent hover:text-app-accent"
+              >
+                Export
+              </button>
+            </div>
           }
         />
-        <div className="mb-4">
+        <div className="mb-4 flex items-center gap-3">
+          <PersistencyBrandLogo />
           <p className="text-sm text-app-muted">
             Design patient persistency curves, compute business metrics, simulate cohorts, and fit KM data.
           </p>
@@ -218,13 +308,29 @@ export default function App() {
         <div className="grid gap-4 md:grid-cols-[minmax(320px,30%)_minmax(0,70%)]">
           {/* Left Panel */}
           <aside className="rounded-panel border border-app-border bg-app-elevated p-3 md:p-4 animate-fadeUp">
-            <PresetSelector
-              activePresetId={state.activePresetId}
-              onSelect={(preset) => {
-                dispatch({ type: "loadPreset", preset });
-                dispatch({ type: "setToast", value: `Loaded preset: ${preset.label}` });
+            {/* Scenario Comparison */}
+            <PersistencyScenarioControls
+              scenarios={state.scenarios}
+              selectedScenarioId={state.editingScenarioId}
+              onAdd={() => {
+                dispatch({ type: "addScenario" });
+                dispatch({ type: "setToast", value: `Scenario snapshot added.` });
               }}
+              onClear={() => dispatch({ type: "clearScenarios" })}
+              onRemove={(id) => dispatch({ type: "removeScenario", id })}
+              onRename={(id, name) => dispatch({ type: "renameScenario", id, name })}
+              onSelectScenario={(id) => dispatch({ type: "selectScenario", id })}
             />
+
+            <div className="mt-3">
+              <PresetSelector
+                activePresetId={state.activePresetId}
+                onSelect={(preset) => {
+                  dispatch({ type: "loadPreset", preset });
+                  dispatch({ type: "setToast", value: `Loaded preset: ${preset.label}` });
+                }}
+              />
+            </div>
 
             <div className="mt-4">
               <PillTabs<LeftTab>
@@ -249,6 +355,17 @@ export default function App() {
                       fullWidth
                     />
                   </div>
+
+                  {editingScenario && (
+                    <div className="rounded border border-app-accent/30 bg-[rgb(var(--app-accent)/0.06)] px-3 py-2">
+                      <p className="font-chrome text-[10px] uppercase tracking-[0.08em] text-app-accent">
+                        Editing: {editingScenario.name}
+                      </p>
+                      <p className="text-[11px] text-app-muted mt-0.5">
+                        Changes update this scenario's snapshot. Click "Done" to stop editing.
+                      </p>
+                    </div>
+                  )}
 
                   <div>
                     <SectionLabel>Parameters</SectionLabel>
@@ -318,6 +435,7 @@ export default function App() {
                     series={series}
                     kmData={state.kmData}
                     benchmarkSeries={benchmarkSeries}
+                    scenarioSeries={scenarioSeries}
                     medianDoT={metrics.medianDoT}
                   />
                 ) : (
@@ -345,6 +463,7 @@ export default function App() {
                 <div className="rounded-panel border border-app-border bg-app-surface p-3">
                   <MetricsPanel
                     metrics={metrics}
+                    scenarioMetrics={scenarioMetrics}
                     monthlyDose={state.monthlyDose}
                     onSetMonthlyDose={(v) => dispatch({ type: "setMonthlyDose", value: v })}
                   />

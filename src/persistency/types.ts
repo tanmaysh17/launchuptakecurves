@@ -93,6 +93,30 @@ export interface Preset {
   params: ModelParams[CurveModel];
 }
 
+// Scenario comparison
+export interface PersistencyScenario {
+  id: string;
+  name: string;
+  color: string;
+  model: CurveModel;
+  paramsSnapshot: ModelParams[CurveModel];
+}
+
+// Shareable state (for URL sharing and session save/restore)
+export interface ShareablePersistencyState {
+  activeModel: CurveModel;
+  params: ModelParams;
+  horizon: number;
+  chartView: ChartView;
+  theme: ThemeMode;
+  scenarios: PersistencyScenario[];
+  editingScenarioId: string | null;
+  benchmarks: { id: string; enabled: boolean }[];
+  cohortNewStarts: number;
+  cohortMonths: number;
+  monthlyDose: number;
+}
+
 export interface PersistencyState {
   activeModel: CurveModel;
   params: ModelParams;
@@ -102,6 +126,10 @@ export interface PersistencyState {
   theme: ThemeMode;
   toast: string | null;
   activePresetId: string | null;
+
+  // Scenarios
+  scenarios: PersistencyScenario[];
+  editingScenarioId: string | null;
 
   // Benchmarks
   benchmarks: { id: string; enabled: boolean }[];
@@ -156,4 +184,12 @@ export type PersistencyAction =
   | { type: "setCohortNewStarts"; value: number }
   | { type: "setCohortMonths"; value: number }
   | { type: "setMonthlyDose"; value: number }
-  | { type: "setExportOpen"; value: boolean };
+  | { type: "setExportOpen"; value: boolean }
+  // Scenario actions
+  | { type: "addScenario" }
+  | { type: "clearScenarios" }
+  | { type: "removeScenario"; id: string }
+  | { type: "renameScenario"; id: string; name: string }
+  | { type: "selectScenario"; id: string | null }
+  // Session actions
+  | { type: "loadSession"; session: ShareablePersistencyState };
